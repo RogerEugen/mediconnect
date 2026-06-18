@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\DiscussionPosted;
 use App\Models\AuditLog;
 use App\Models\Discussion;
 use App\Models\MedicalCase;
 use App\Models\Notification;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -13,7 +15,25 @@ use Illuminate\Validation\Rule;
 
 class ClinicalDiscussionController extends Controller
 {
-    public function store(Request $request, MedicalCase $clinicalCase): RedirectResponse
+    public function sync(Request $request, MedicalCase $clinicalCase): JsonResponse
+    {
+        $after = max(0, $request->integer('after'));
+
+        $discussions = $clinicalCase->discussions()
+            ->with('user')
+            ->where('id', '>', $after)
+            ->oldest('id')
+            ->get()
+            ->map(fn (Discussion $discussion) => $this->payload($discussion));
+
+        return response()->json([
+            'discussions' => $discussions,
+            'latest_id' => $clinicalCase->discussions()->max('id') ?? $after,
+            'count' => $clinicalCase->discussions()->count(),
+        ]);
+    }
+
+    public function store(Request $request, MedicalCase $clinicalCase): RedirectResponse|JsonResponse
     {
         abort_unless(in_array(Auth::user()->role, ['doctor', 'specialist'], true), 403);
         abort_if($clinicalCase->status === 'closed', 403, 'This discussion is closed.');
@@ -34,6 +54,7 @@ class ClinicalDiscussionController extends Controller
             'message' => $validated['message'],
             'is_expert_opinion' => Auth::user()->isSpecialist() && $request->boolean('is_expert_opinion'),
         ]);
+        $discussion->load('user');
 
         if ($clinicalCase->status === 'open') {
             $clinicalCase->update(['status' => 'in_discussion']);
@@ -58,6 +79,14 @@ class ClinicalDiscussionController extends Controller
         }
 
         AuditLog::record('posted_discussion', "Contributed to {$clinicalCase->case_number}", $discussion);
+        broadcast(new DiscussionPosted($discussion));
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message' => 'Your contribution has been added to the discussion.',
+                'discussion' => $this->payload($discussion),
+            ], 201);
+        }
 
         return redirect(route('clinical-cases.show', $clinicalCase).'#discussion')
             ->with('success', 'Your contribution has been added to the discussion.');
@@ -77,5 +106,24 @@ class ClinicalDiscussionController extends Controller
         $discussion->delete();
 
         return back()->with('success', 'Contribution removed.');
+    }
+
+    private function payload(Discussion $discussion): array
+    {
+        $discussion->loadMissing('user');
+
+        return [
+            'id' => $discussion->id,
+            'case_id' => $discussion->case_id,
+            'parent_id' => $discussion->parent_id,
+            'message' => $discussion->message,
+            'is_expert_opinion' => $discussion->is_expert_opinion,
+            'created_at' => $discussion->created_at->diffForHumans(),
+            'user' => [
+                'id' => $discussion->user->id,
+                'name' => $discussion->user->name,
+                'role' => $discussion->user->role,
+            ],
+        ];
     }
 }

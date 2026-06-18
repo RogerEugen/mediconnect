@@ -75,6 +75,7 @@ Route::middleware('auth')->group(function () {
     Route::patch('clinical-cases/{clinicalCase}/reopen', [ClinicalCaseController::class, 'reopen'])->name('clinical-cases.reopen');
     Route::delete('clinical-cases/{clinicalCase}', [ClinicalCaseController::class, 'destroy'])->name('clinical-cases.destroy');
     Route::post('clinical-cases/{clinicalCase}/discussions', [ClinicalDiscussionController::class, 'store'])->name('clinical-discussions.store');
+    Route::get('clinical-cases/{clinicalCase}/discussions/sync', [ClinicalDiscussionController::class, 'sync'])->name('clinical-discussions.sync');
     Route::delete('clinical-discussions/{discussion}', [ClinicalDiscussionController::class, 'destroy'])->name('clinical-discussions.destroy');
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');

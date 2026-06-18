@@ -6,6 +6,13 @@
         <meta name="csrf-token" content="{{ csrf_token() }}">
 
         <title>{{ config('app.name', 'MediConnect') }}</title>
+        <script>
+            (() => {
+                const savedTheme = localStorage.getItem('mediconnect-theme');
+                const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                document.documentElement.classList.toggle('dark', savedTheme ? savedTheme === 'dark' : prefersDark);
+            })();
+        </script>
 
         <!-- Fonts -->
         <link rel="preconnect" href="https://fonts.bunny.net">
@@ -48,6 +55,18 @@
 
         @auth
         <script>
+        function themeSwitcher() {
+            return {
+                dark: document.documentElement.classList.contains('dark'),
+
+                toggle() {
+                    this.dark = !this.dark;
+                    document.documentElement.classList.toggle('dark', this.dark);
+                    localStorage.setItem('mediconnect-theme', this.dark ? 'dark' : 'light');
+                }
+            }
+        }
+
         function notificationBell() {
             return {
                 open: false,
@@ -161,6 +180,10 @@
 
                             // Show toast
                             this.showToast(data.title, data.message, data.color ?? 'blue');
+
+                            window.dispatchEvent(new CustomEvent('mediconnect:notification', {
+                                detail: data
+                            }));
                         });
                 },
 
