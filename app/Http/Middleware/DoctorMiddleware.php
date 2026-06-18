@@ -15,6 +15,8 @@ class DoctorMiddleware
      */
     public function handle(Request $request, Closure $next): Response
     {
+        abort_unless($request->user()?->role === 'doctor', 403);
+
         return $next($request);
     }
 }

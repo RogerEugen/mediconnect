@@ -7,15 +7,18 @@
             <div class="flex">
                 <div class="shrink-0 flex items-center">
                     <a href="{{ route('specialist.dashboard') }}" class="text-lg font-bold text-purple-600 dark:text-purple-400">
-                        Medico<span class="text-gray-800 dark:text-white">Connect</span>
+                        Medi<span class="text-gray-800 dark:text-white">Connect</span>
                     </a>
                 </div>
                 <div class="hidden space-x-1 sm:-my-px sm:ms-8 sm:flex items-center">
                     <x-nav-link :href="route('specialist.dashboard')" :active="request()->routeIs('specialist.dashboard')">
                         Dashboard
                     </x-nav-link>
-                    <x-nav-link :href="route('specialist.cases.index')" :active="request()->routeIs('specialist.cases.*')">
-                        My Cases
+                    <x-nav-link :href="route('clinical-cases.index')" :active="request()->routeIs('clinical-cases.*')">
+                        Case Discussions
+                    </x-nav-link>
+                    <x-nav-link :href="route('clinical-cases.index', ['following' => 1])" :active="request()->boolean('following')">
+                        Following
                     </x-nav-link>
                 </div>
             </div>
@@ -171,7 +174,8 @@
     <div :class="{'block': open, 'hidden': !open}" class="hidden sm:hidden border-t border-gray-100">
         <div class="pt-2 pb-3 space-y-1 px-4">
             <x-responsive-nav-link :href="route('specialist.dashboard')" :active="request()->routeIs('specialist.dashboard')">Dashboard</x-responsive-nav-link>
-            <x-responsive-nav-link :href="route('specialist.cases.index')" :active="request()->routeIs('specialist.cases.*')">My Cases</x-responsive-nav-link>
+            <x-responsive-nav-link :href="route('clinical-cases.index')" :active="request()->routeIs('clinical-cases.*')">Case Discussions</x-responsive-nav-link>
+            <x-responsive-nav-link :href="route('clinical-cases.index', ['following' => 1])" :active="request()->boolean('following')">Following</x-responsive-nav-link>
         </div>
         <div class="pt-4 pb-1 border-t border-gray-200 px-4">
             <div class="font-medium text-base text-gray-800">{{ Auth::user()->name }}</div>

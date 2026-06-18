@@ -5,7 +5,7 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="csrf-token" content="{{ csrf_token() }}">
 
-        <title>{{ config('app.name', 'MedicoConnect') }}</title>
+        <title>{{ config('app.name', 'MediConnect') }}</title>
 
         <!-- Fonts -->
         <link rel="preconnect" href="https://fonts.bunny.net">
@@ -97,6 +97,9 @@
                             });
                         } catch(e) {}
                     }
+                    if (notification.url) {
+                        window.location.href = notification.url;
+                    }
                 },
 
                 async markAllRead() {
@@ -141,6 +144,7 @@
                                 message: data.message,
                                 type:    data.type,
                                 color:   data.color ?? 'blue',
+                                url:     data.url ?? null,
                                 is_read: false,
                                 time:    data.created_at,
                             });

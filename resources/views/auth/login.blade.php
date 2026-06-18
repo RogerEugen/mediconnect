@@ -69,12 +69,8 @@
             </button>
         </form>
 
-        <!-- Register -->
-        <p class="mt-6 text-sm text-gray-600 text-center">
-            Don’t have an account?
-            <a href="{{ route('register') }}" class="text-teal-600 hover:underline">
-                Register
-            </a>
+        <p class="mt-6 text-center text-xs leading-5 text-gray-500">
+            Accounts are created and verified by the MediConnect administrator.
         </p>
     </div>
 

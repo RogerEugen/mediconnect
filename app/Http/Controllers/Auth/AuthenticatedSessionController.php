@@ -4,11 +4,11 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
+use App\Models\AuditLog;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
-use App\Models\AuditLog;
 
 class AuthenticatedSessionController extends Controller
 {
@@ -27,6 +27,7 @@ class AuthenticatedSessionController extends Controller
     {
         $request->authenticate();
         $request->session()->regenerate();
+        AuditLog::record('login', 'User logged in successfully');
 
         $role = strtolower(Auth::user()->role); // normalize role to lowercase
 
@@ -38,9 +39,10 @@ class AuthenticatedSessionController extends Controller
             return redirect()->route('specialist.dashboard');
         }
 
-        abort(403, 'Unauthorized'); // fallback if role is unknown
-        AuditLog::record('login', 'User logged in successfully');
+        Auth::logout();
+        abort(403, 'Unauthorized role.');
     }
+
     /**
      * Destroy an authenticated session.
      */

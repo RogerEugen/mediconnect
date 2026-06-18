@@ -71,6 +71,7 @@ class NotificationController extends Controller
                 'title'      => $n->title,
                 'message'    => $n->message,
                 'type'       => $n->type,
+                'url'        => $n->url,
                 'color'      => $n->color,
                 'is_read'    => $n->is_read,
                 'time'       => $n->created_at->diffForHumans(),

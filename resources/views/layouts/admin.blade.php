@@ -7,7 +7,7 @@
             <div class="flex">
                 <div class="shrink-0 flex items-center">
                     <a href="{{ route('admin.dashboard') }}" class="text-lg font-bold text-gray-800 dark:text-white">
-                        Medico<span class="text-blue-600 dark:text-blue-400">Connect</span>
+                        Medi<span class="text-blue-600 dark:text-blue-400">Connect</span>
                         {{-- <span class="ml-1 text-xs font-normal text-gray-400">Admin</span> --}}
                     </a>
                 </div>
@@ -45,10 +45,10 @@
                    </x-nav-link>
 
                    {{-- Cases --}}
-                   <x-nav-link :href="route('admin.cases.index')" :active="request()->routeIs('admin.cases.*')">
+                   <x-nav-link :href="route('clinical-cases.index')" :active="request()->routeIs('clinical-cases.*')">
                        <div class="flex items-center gap-2">
                            <x-heroicon-o-document-text class="w-5 h-5" />
-                           <span>Cases</span>
+                           <span>Discussions</span>
 
                            @php
                            $openCases = \App\Models\MedicalCase::where('status','open')->count();
@@ -210,7 +210,7 @@
             <x-responsive-nav-link :href="route('admin.hospitals.index')" :active="request()->routeIs('admin.hospitals.*')">Hospitals</x-responsive-nav-link>
             <x-responsive-nav-link :href="route('admin.specializations.index')" :active="request()->routeIs('admin.specializations.*')">Specializations</x-responsive-nav-link>
             <x-responsive-nav-link :href="route('admin.users.index')" :active="request()->routeIs('admin.users.*')">Manage Users</x-responsive-nav-link>
-            <x-responsive-nav-link :href="route('admin.cases.index')" :active="request()->routeIs('admin.cases.*')">Cases</x-responsive-nav-link>
+            <x-responsive-nav-link :href="route('clinical-cases.index')" :active="request()->routeIs('clinical-cases.*')">Discussions</x-responsive-nav-link>
         </div>
         <div class="pt-4 pb-1 border-t border-gray-200 px-4">
             <div class="font-medium text-base text-gray-800">{{ Auth::user()->name }}</div>

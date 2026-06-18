@@ -15,6 +15,8 @@ class SpecialistMiddleware
      */
     public function handle(Request $request, Closure $next): Response
     {
+        abort_unless($request->user()?->role === 'specialist', 403);
+
         return $next($request);
     }
 }
