@@ -105,16 +105,16 @@
 
                             {{-- Specialization section (specialist only) --}}
                             <div id="specializationSection"
-                                 class="{{ old('role') === 'specialist' ? '' : 'hidden' }}">
-                                <p class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                    Specializations <span class="text-red-500">*</span>
+                                 class="{{ old('role') === 'specialist' ? '' : 'hidden' }} rounded-2xl border border-purple-200 bg-purple-50/60 p-5 dark:border-purple-900 dark:bg-purple-950/20">
+                                <p class="text-sm font-bold text-purple-900 dark:text-purple-200">
+                                    Specialist access <span class="text-red-500">*</span>
                                 </p>
-                                <p class="text-xs text-gray-400 mb-3">
-                                    Select one or more. Mark the primary one with ★
+                                <p class="mb-3 mt-1 text-xs leading-5 text-purple-700 dark:text-purple-300">
+                                    This selection controls which clinical cases the specialist can see and which notifications they receive.
                                 </p>
                                 <div class="space-y-2 max-h-80 overflow-y-auto pr-1">
                                     @foreach($specializations as $spec)
-                                    <div class="flex items-center justify-between gap-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition">
+                                    <div class="flex items-center justify-between gap-3 rounded-xl border border-purple-100 bg-white p-3 transition hover:border-purple-300 dark:border-purple-900 dark:bg-slate-900">
                                         <div class="flex items-center gap-2">
                                             <input type="checkbox"
                                                    name="specialization_ids[]"
@@ -123,7 +123,7 @@
                                                    class="rounded border-gray-300 text-blue-600"
                                                    {{ is_array(old('specialization_ids')) && in_array($spec->id, old('specialization_ids')) ? 'checked' : '' }}>
                                             <label for="spec_{{ $spec->id }}"
-                                                   class="text-sm font-medium text-gray-700 cursor-pointer">
+                                                   class="cursor-pointer text-sm font-medium text-gray-700 dark:text-gray-200">
                                                 {{ $spec->name }}
                                             </label>
                                         </div>
@@ -150,11 +150,10 @@
                             {{-- Doctor info --}}
                             <div id="doctorInfo"
                                  class="{{ old('role') === 'doctor' ? '' : 'hidden' }}">
-                                <div class="p-4 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800">
-                                    <p class="font-semibold mb-1">Doctor account</p>
-                                    <p class="text-xs text-blue-600">
-                                        Doctors can search patients, view medical history,
-                                        add records, and post complex cases for specialist review.
+                                <div class="rounded-2xl border border-blue-200 bg-blue-50 p-5 text-sm text-blue-800 dark:border-blue-900 dark:bg-blue-950/20 dark:text-blue-200">
+                                    <p class="mb-1 font-semibold">Doctor account</p>
+                                    <p class="text-xs leading-5 text-blue-600 dark:text-blue-300">
+                                        Doctors can publish anonymized clinical cases, follow discussions and collaborate with matched specialists.
                                     </p>
                                 </div>
                             </div>

@@ -17,6 +17,7 @@ class ClinicalCaseController extends Controller
     public function index(Request $request): View
     {
         $query = MedicalCase::query()
+            ->visibleTo(Auth::user())
             ->with(['postedBy.profile', 'hospital', 'specialization'])
             ->withCount('discussions');
 
@@ -49,11 +50,14 @@ class ClinicalCaseController extends Controller
         };
 
         $cases = $query->paginate(12)->withQueryString();
-        $specializations = Specialization::where('is_active', true)->orderBy('name')->get();
+        $specializations = Auth::user()->isSpecialist()
+            ? Auth::user()->specializations()->where('is_active', true)->orderBy('name')->get()
+            : Specialization::where('is_active', true)->orderBy('name')->get();
+        $visibleCases = MedicalCase::query()->visibleTo(Auth::user());
         $stats = [
-            'open' => MedicalCase::whereIn('status', ['open', 'in_discussion'])->count(),
-            'unanswered' => MedicalCase::doesntHave('discussions')->count(),
-            'resolved' => MedicalCase::where('status', 'resolved')->count(),
+            'open' => (clone $visibleCases)->whereIn('status', ['open', 'in_discussion'])->count(),
+            'unanswered' => (clone $visibleCases)->doesntHave('discussions')->count(),
+            'resolved' => (clone $visibleCases)->where('status', 'resolved')->count(),
         ];
 
         return view('clinical-cases.index', compact('cases', 'specializations', 'stats'));
@@ -84,7 +88,7 @@ class ClinicalCaseController extends Controller
             'prior_treatments' => ['nullable', 'string'],
             'discussion_question' => ['required', 'string', 'min:10'],
             'urgency' => ['required', 'in:low,medium,high,critical'],
-            'specialization_id' => ['nullable', 'exists:specializations,id'],
+            'specialization_id' => ['required', 'exists:specializations,id'],
             'author_anonymous' => ['nullable', 'boolean'],
             'privacy_confirmation' => ['accepted'],
         ]);
@@ -103,7 +107,15 @@ class ClinicalCaseController extends Controller
         $case->followers()->attach(Auth::id());
 
         User::where('is_active', true)
-            ->whereIn('role', ['doctor', 'specialist'])
+            ->where(function ($query) use ($case) {
+                $query->where('role', 'doctor')
+                    ->orWhere(function ($query) use ($case) {
+                        $query->where('role', 'specialist')
+                            ->whereHas('specializations', fn ($specializations) => $specializations
+                                ->where('specializations.id', $case->specialization_id)
+                            );
+                    });
+            })
             ->whereKeyNot(Auth::id())
             ->each(fn (User $user) => Notification::send(
                 $user->id,
@@ -122,6 +134,8 @@ class ClinicalCaseController extends Controller
 
     public function show(MedicalCase $clinicalCase): View
     {
+        $this->authorizeVisibility($clinicalCase);
+
         $clinicalCase->load([
             'postedBy.profile',
             'hospital',
@@ -141,6 +155,8 @@ class ClinicalCaseController extends Controller
 
     public function toggleFollow(MedicalCase $clinicalCase): RedirectResponse
     {
+        $this->authorizeVisibility($clinicalCase);
+
         $attached = $clinicalCase->followers()->toggle(Auth::id());
         $following = count($attached['attached']) > 0;
 
@@ -206,5 +222,10 @@ class ClinicalCaseController extends Controller
     private function ensureClinician(): void
     {
         abort_unless(in_array(Auth::user()->role, ['doctor', 'specialist'], true), 403);
+    }
+
+    private function authorizeVisibility(MedicalCase $clinicalCase): void
+    {
+        abort_unless($clinicalCase->isVisibleTo(Auth::user()), 403);
     }
 }

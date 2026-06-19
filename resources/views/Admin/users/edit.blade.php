@@ -88,11 +88,11 @@
                         </div>
 
                         @if($user->role === 'specialist')
-                        <div>
-                            <p class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                Specializations <span class="text-red-500">*</span>
+                        <div class="rounded-2xl border border-purple-200 bg-purple-50/60 p-5 dark:border-purple-900 dark:bg-purple-950/20">
+                            <p class="text-sm font-bold text-purple-900 dark:text-purple-200">
+                                Specialist access <span class="text-red-500">*</span>
                             </p>
-                            <p class="text-xs text-gray-400 mb-3">Mark the primary one with ★</p>
+                            <p class="mb-3 mt-1 text-xs leading-5 text-purple-700 dark:text-purple-300">Selected specialties determine the cases and realtime notifications available to this user.</p>
 
                             @php
                                 $assignedIds = $user->specializations->pluck('id')->toArray();
@@ -101,7 +101,7 @@
 
                             <div class="space-y-2 max-h-80 overflow-y-auto pr-1">
                                 @foreach($specializations as $spec)
-                                <div class="flex items-center justify-between gap-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition">
+                                <div class="flex items-center justify-between gap-3 rounded-xl border border-purple-100 bg-white p-3 transition hover:border-purple-300 dark:border-purple-900 dark:bg-slate-900">
                                     <div class="flex items-center gap-2">
                                         <input type="checkbox"
                                                name="specialization_ids[]"
@@ -110,7 +110,7 @@
                                                class="rounded border-gray-300 text-blue-600"
                                                {{ in_array($spec->id, old('specialization_ids', $assignedIds)) ? 'checked' : '' }}>
                                         <label for="spec_{{ $spec->id }}"
-                                               class="text-sm font-medium text-gray-700 cursor-pointer">
+                                               class="cursor-pointer text-sm font-medium text-gray-700 dark:text-gray-200">
                                             {{ $spec->name }}
                                         </label>
                                     </div>

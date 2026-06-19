@@ -1,16 +1,18 @@
 <?php
+
 // app/Http/Controllers/Admin/UserController.php
 
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\User;
 use App\Models\Hospital;
 use App\Models\Specialization;
+use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\Rules\Password;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\Password;
 
 class UserController extends Controller
 {
@@ -30,7 +32,7 @@ class UserController extends Controller
 
     public function create()
     {
-        $hospitals       = Hospital::where('is_active', true)->orderBy('name')->get();
+        $hospitals = Hospital::where('is_active', true)->orderBy('name')->get();
         $specializations = Specialization::where('is_active', true)->orderBy('name')->get();
 
         return view('Admin.users.create', compact('hospitals', 'specializations'));
@@ -39,24 +41,24 @@ class UserController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'name'               => 'required|string|max:255',
-            'email'              => 'required|email|unique:users,email',
-            'role'               => 'required|in:doctor,specialist',
-            'hospital_id'        => 'required|exists:hospitals,id',
-            'password'           => ['required', Password::min(8)],
-            'specialization_ids' => 'required_if:role,specialist|array',
-            'specialization_ids.*'=> 'exists:specializations,id',
-            'is_primary_spec'    => 'nullable|integer',
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|unique:users,email',
+            'role' => 'required|in:doctor,specialist',
+            'hospital_id' => 'required|exists:hospitals,id',
+            'password' => ['required', Password::min(8)],
+            'specialization_ids' => 'required_if:role,specialist|array|min:1',
+            'specialization_ids.*' => 'exists:specializations,id',
+            'is_primary_spec' => ['nullable', Rule::in($request->input('specialization_ids', []))],
         ]);
 
         // Create user
         $user = User::create([
-            'name'        => $validated['name'],
-            'email'       => $validated['email'],
-            'role'        => $validated['role'],
+            'name' => $validated['name'],
+            'email' => $validated['email'],
+            'role' => $validated['role'],
             'hospital_id' => $validated['hospital_id'],
-            'password'    => Hash::make($validated['password']),
-            'is_active'   => true,
+            'password' => Hash::make($validated['password']),
+            'is_active' => true,
         ]);
 
         // Assign to hospital pivot
@@ -65,13 +67,13 @@ class UserController extends Controller
         ]);
 
         // If specialist, assign specializations
-        if ($validated['role'] === 'specialist' && !empty($validated['specialization_ids'])) {
+        if ($validated['role'] === 'specialist' && ! empty($validated['specialization_ids'])) {
             $primaryId = $request->input('is_primary_spec', $validated['specialization_ids'][0]);
 
             $syncData = [];
             foreach ($validated['specialization_ids'] as $specId) {
                 $syncData[$specId] = [
-                    'is_primary'   => ($specId == $primaryId),
+                    'is_primary' => ($specId == $primaryId),
                     'certified_at' => null,
                 ];
             }
@@ -79,7 +81,7 @@ class UserController extends Controller
         }
 
         return redirect()->route('admin.users.index')
-                         ->with('success', ucfirst($validated['role']) . ' account created successfully.');
+            ->with('success', ucfirst($validated['role']).' account created successfully.');
     }
 
     public function show(User $user)
@@ -91,7 +93,7 @@ class UserController extends Controller
 
     public function edit(User $user)
     {
-        $hospitals       = Hospital::where('is_active', true)->orderBy('name')->get();
+        $hospitals = Hospital::where('is_active', true)->orderBy('name')->get();
         $specializations = Specialization::where('is_active', true)->orderBy('name')->get();
 
         $user->load('specializations');
@@ -102,21 +104,23 @@ class UserController extends Controller
     public function update(Request $request, User $user)
     {
         $validated = $request->validate([
-            'name'               => 'required|string|max:255',
-            'email'              => 'required|email|unique:users,email,' . $user->id,
-            'hospital_id'        => 'required|exists:hospitals,id',
-            'specialization_ids' => 'required_if:role,specialist|array',
-            'specialization_ids.*'=> 'exists:specializations,id',
-            'is_primary_spec'    => 'nullable|integer',
-            'password'           => ['nullable', Password::min(8)],
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|unique:users,email,'.$user->id,
+            'hospital_id' => 'required|exists:hospitals,id',
+            'specialization_ids' => $user->role === 'specialist'
+                ? 'required|array|min:1'
+                : 'nullable|array',
+            'specialization_ids.*' => 'exists:specializations,id',
+            'is_primary_spec' => ['nullable', Rule::in($request->input('specialization_ids', []))],
+            'password' => ['nullable', Password::min(8)],
         ]);
 
         // Update base info
         $user->update([
-            'name'        => $validated['name'],
-            'email'       => $validated['email'],
+            'name' => $validated['name'],
+            'email' => $validated['email'],
             'hospital_id' => $validated['hospital_id'],
-            'password'    => $validated['password']
+            'password' => $validated['password']
                                 ? Hash::make($validated['password'])
                                 : $user->password,
         ]);
@@ -127,13 +131,13 @@ class UserController extends Controller
         ]);
 
         // Update specializations if specialist
-        if ($user->role === 'specialist' && !empty($validated['specialization_ids'])) {
+        if ($user->role === 'specialist' && ! empty($validated['specialization_ids'])) {
             $primaryId = $request->input('is_primary_spec', $validated['specialization_ids'][0]);
 
             $syncData = [];
             foreach ($validated['specialization_ids'] as $specId) {
                 $syncData[$specId] = [
-                    'is_primary'   => ($specId == $primaryId),
+                    'is_primary' => ($specId == $primaryId),
                     'certified_at' => null,
                 ];
             }
@@ -141,7 +145,7 @@ class UserController extends Controller
         }
 
         return redirect()->route('admin.users.index')
-                         ->with('success', 'User updated successfully.');
+            ->with('success', 'User updated successfully.');
     }
 
     public function destroy(User $user)
@@ -153,16 +157,16 @@ class UserController extends Controller
         $user->delete();
 
         return redirect()->route('admin.users.index')
-                         ->with('success', 'User deleted successfully.');
+            ->with('success', 'User deleted successfully.');
     }
 
     public function toggle(User $user)
     {
-        if ($user->id ===Auth::user()->id) {
+        if ($user->id === Auth::user()->id) {
             return back()->with('error', 'You cannot deactivate your own account.');
         }
 
-        $user->update(['is_active' => !$user->is_active]);
+        $user->update(['is_active' => ! $user->is_active]);
 
         $status = $user->is_active ? 'activated' : 'deactivated';
 
@@ -175,6 +179,6 @@ class UserController extends Controller
             'password' => Hash::make('Password@123'),
         ]);
 
-        return back()->with('success', "Password reset to Password@123. Ask the user to change it on next login.");
+        return back()->with('success', 'Password reset to Password@123. Ask the user to change it on next login.');
     }
 }

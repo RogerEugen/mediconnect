@@ -26,6 +26,15 @@
                 @endforeach
             </div>
 
+            <div class="mt-6 rounded-2xl border border-purple-200 bg-purple-50 p-5 dark:border-purple-900 dark:bg-purple-950/30">
+                <p class="text-xs font-bold uppercase tracking-[0.18em] text-purple-600">Specialty access</p>
+                <p class="mt-2 text-sm leading-6 text-purple-900 dark:text-purple-200">
+                    Your feed is limited to
+                    <strong>{{ auth()->user()->specializations->pluck('name')->join(', ') ?: 'specialties assigned by the administrator' }}</strong>.
+                    Contact the administrator if your specialist profile needs correction.
+                </p>
+            </div>
+
             @include('clinical-cases.partials.dashboard-list', [
                 'title' => 'Cases relevant to your specialties',
                 'emptyMessage' => 'No active cases match your specialties right now.',

@@ -15,16 +15,16 @@ class SpecialistController extends Controller
     {
         $specialist = Auth::user();
 
-        $specializationIds = $specialist->specializations()->pluck('specializations.id');
+        $visibleCases = MedicalCase::query()->visibleTo($specialist);
         $stats = [
-            'relevant_cases' => MedicalCase::whereIn('specialization_id', $specializationIds)->whereIn('status', ['open', 'in_discussion'])->count(),
+            'relevant_cases' => (clone $visibleCases)->whereIn('status', ['open', 'in_discussion'])->count(),
             'my_contributions' => Discussion::where('user_id', $specialist->id)->count(),
-            'unanswered' => MedicalCase::doesntHave('discussions')->count(),
-            'resolved' => MedicalCase::where('status', 'resolved')->count(),
+            'unanswered' => (clone $visibleCases)->doesntHave('discussions')->count(),
+            'resolved' => (clone $visibleCases)->where('status', 'resolved')->count(),
         ];
         $recentCases = MedicalCase::with(['specialization', 'postedBy'])
+            ->visibleTo($specialist)
             ->withCount('discussions')
-            ->when($specializationIds->isNotEmpty(), fn ($query) => $query->whereIn('specialization_id', $specializationIds))
             ->whereIn('status', ['open', 'in_discussion'])
             ->latest('updated_at')
             ->take(6)

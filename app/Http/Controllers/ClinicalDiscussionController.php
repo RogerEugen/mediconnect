@@ -7,6 +7,7 @@ use App\Models\AuditLog;
 use App\Models\Discussion;
 use App\Models\MedicalCase;
 use App\Models\Notification;
+use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -17,6 +18,8 @@ class ClinicalDiscussionController extends Controller
 {
     public function sync(Request $request, MedicalCase $clinicalCase): JsonResponse
     {
+        $this->authorizeVisibility($clinicalCase);
+
         $after = max(0, $request->integer('after'));
 
         $discussions = $clinicalCase->discussions()
@@ -35,6 +38,7 @@ class ClinicalDiscussionController extends Controller
 
     public function store(Request $request, MedicalCase $clinicalCase): RedirectResponse|JsonResponse
     {
+        $this->authorizeVisibility($clinicalCase);
         abort_unless(in_array(Auth::user()->role, ['doctor', 'specialist'], true), 403);
         abort_if($clinicalCase->status === 'closed', 403, 'This discussion is closed.');
 
@@ -68,9 +72,12 @@ class ClinicalDiscussionController extends Controller
             ->unique()
             ->reject(fn ($id) => $id === Auth::id());
 
-        foreach ($recipientIds as $recipientId) {
+        $recipients = User::whereKey($recipientIds)->get()
+            ->filter(fn (User $user) => $clinicalCase->isVisibleTo($user));
+
+        foreach ($recipients as $recipient) {
             Notification::send(
-                $recipientId,
+                $recipient->id,
                 $discussion->is_expert_opinion ? 'Specialist insight added' : 'New contribution to a case',
                 Auth::user()->name." replied to {$clinicalCase->case_number}: {$clinicalCase->title}",
                 'new_discussion',
@@ -94,6 +101,8 @@ class ClinicalDiscussionController extends Controller
 
     public function destroy(Discussion $discussion): RedirectResponse
     {
+        $this->authorizeVisibility($discussion->case);
+
         abort_unless(
             Auth::user()->isAdmin() || $discussion->user_id === Auth::id(),
             403
@@ -125,5 +134,10 @@ class ClinicalDiscussionController extends Controller
                 'role' => $discussion->user->role,
             ],
         ];
+    }
+
+    private function authorizeVisibility(MedicalCase $clinicalCase): void
+    {
+        abort_unless($clinicalCase->isVisibleTo(Auth::user()), 403);
     }
 }

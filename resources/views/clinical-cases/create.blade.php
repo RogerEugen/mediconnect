@@ -37,13 +37,15 @@
                         </div>
                         <div class="grid gap-5 sm:grid-cols-2">
                             <div>
-                                <label for="specialization_id" class="mb-1.5 block text-sm font-semibold text-slate-700 dark:text-slate-200">Relevant specialty</label>
-                                <select id="specialization_id" name="specialization_id" class="w-full rounded-xl border-slate-300 focus:border-teal-500 focus:ring-teal-500 dark:border-slate-600 dark:bg-slate-900 dark:text-white">
-                                    <option value="">Multidisciplinary / unsure</option>
+                                <label for="specialization_id" class="mb-1.5 block text-sm font-semibold text-slate-700 dark:text-slate-200">Specialists required <span class="text-rose-500">*</span></label>
+                                <select id="specialization_id" name="specialization_id" required class="w-full rounded-xl border-slate-300 focus:border-teal-500 focus:ring-teal-500 dark:border-slate-600 dark:bg-slate-900 dark:text-white">
+                                    <option value="">Select the specialist team</option>
                                     @foreach($specializations as $specialization)
                                         <option value="{{ $specialization->id }}" @selected(old('specialization_id') == $specialization->id)>{{ $specialization->name }}</option>
                                     @endforeach
                                 </select>
+                                <p class="mt-1.5 text-xs leading-5 text-slate-500">Only specialists assigned to this specialty will receive and access the case.</p>
+                                @error('specialization_id')<p class="mt-1 text-xs text-rose-600">{{ $message }}</p>@enderror
                             </div>
                             <div>
                                 <label for="urgency" class="mb-1.5 block text-sm font-semibold text-slate-700 dark:text-slate-200">Discussion priority</label>

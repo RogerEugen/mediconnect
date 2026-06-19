@@ -4,6 +4,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -89,6 +90,45 @@ class MedicalCase extends Model
     {
         return $this->belongsToMany(User::class, 'case_followers', 'case_id', 'user_id')
             ->withTimestamps();
+    }
+
+    public function scopeVisibleTo(Builder $query, User $user): Builder
+    {
+        if ($user->isAdmin() || $user->isDoctor()) {
+            return $query;
+        }
+
+        if (! $user->isSpecialist()) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        $specializationIds = $user->specializations()
+            ->pluck('specializations.id');
+
+        return $query->where(function (Builder $query) use ($user, $specializationIds) {
+            $query->where('posted_by', $user->id)
+                ->orWhereNull('specialization_id');
+
+            if ($specializationIds->isNotEmpty()) {
+                $query->orWhereIn('specialization_id', $specializationIds);
+            }
+        });
+    }
+
+    public function isVisibleTo(User $user): bool
+    {
+        if ($user->isAdmin() || $user->isDoctor() || $this->posted_by === $user->id) {
+            return true;
+        }
+
+        if (! $user->isSpecialist()) {
+            return false;
+        }
+
+        return $this->specialization_id === null
+            || $user->specializations()
+                ->whereKey($this->specialization_id)
+                ->exists();
     }
 
     // Generate unique case number
