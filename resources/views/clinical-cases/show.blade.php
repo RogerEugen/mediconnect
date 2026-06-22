@@ -10,12 +10,14 @@
                 </div>
                 <h1 class="mt-2 text-2xl font-bold text-slate-900 dark:text-white">{{ $clinicalCase->title }}</h1>
             </div>
-            <form method="POST" action="{{ route('clinical-cases.follow', $clinicalCase) }}">
-                @csrf
-                <button class="rounded-xl border px-4 py-2.5 text-sm font-semibold transition {{ $isFollowing ? 'border-teal-200 bg-teal-50 text-teal-800 hover:bg-teal-100' : 'border-slate-300 bg-white text-slate-700 hover:border-teal-300 hover:text-teal-700' }}">
-                    {{ $isFollowing ? '✓ Following discussion' : '+ Follow discussion' }}
-                </button>
-            </form>
+            @if(auth()->id() !== $clinicalCase->posted_by)
+                <form method="POST" action="{{ route('clinical-cases.follow', $clinicalCase) }}">
+                    @csrf
+                    <button class="rounded-xl border px-4 py-2.5 text-sm font-semibold transition {{ $isFollowing ? 'border-teal-200 bg-teal-50 text-teal-800 hover:bg-teal-100' : 'border-slate-300 bg-white text-slate-700 hover:border-teal-300 hover:text-teal-700' }}">
+                        {{ $isFollowing ? '✓ Following discussion' : '+ Follow discussion' }}
+                    </button>
+                </form>
+            @endif
         </div>
     </x-slot>
 
@@ -109,7 +111,7 @@
                                             </div>
                                             <p class="mt-1 text-xs text-slate-400">{{ $discussion->created_at->diffForHumans() }}</p>
                                         </div>
-                                        @if(auth()->id() === $discussion->user_id || auth()->user()->isAdmin())
+                                        @if(auth()->id() === $discussion->user_id)
                                             <form method="POST" action="{{ route('clinical-discussions.destroy', $discussion) }}" onsubmit="return confirm('Remove this contribution?')">
                                                 @csrf @method('DELETE')
                                                 <button class="text-xs font-medium text-rose-500 hover:text-rose-700">Remove</button>
@@ -193,12 +195,12 @@
                         <p class="mt-2 text-xs leading-6 text-blue-800 dark:text-blue-300">MediConnect supports professional peer discussion. The treating clinician remains responsible for verifying recommendations, local protocols and patient-specific decisions.</p>
                     </div>
 
-                    @if(auth()->user()->isAdmin() || auth()->id() === $clinicalCase->posted_by)
+                    @if(auth()->id() === $clinicalCase->posted_by)
                         @if($clinicalCase->private_reference)
                             <div class="rounded-2xl border border-amber-200 bg-amber-50 p-5 dark:border-amber-900 dark:bg-amber-950/30">
                                 <p class="text-xs font-bold uppercase tracking-wider text-amber-700">Private local reference</p>
                                 <p class="mt-2 break-all font-mono text-sm font-bold text-amber-950 dark:text-amber-200">{{ $clinicalCase->private_reference }}</p>
-                                <p class="mt-2 text-xs leading-5 text-amber-700">Only the case author and administrators can see this encrypted reference.</p>
+                                <p class="mt-2 text-xs leading-5 text-amber-700">Only you, the case author, can see this encrypted reference.</p>
                             </div>
                         @endif
                         <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">

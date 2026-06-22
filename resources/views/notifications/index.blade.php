@@ -82,7 +82,7 @@
                     <div class="flex-1 min-w-0">
                         <div class="flex justify-between items-start gap-2">
                             <div class="flex-1 min-w-0">
-                                <p class="text-sm font-semibold text-gray-800 dW]\ 567999999999999999999999999                                ]W[[    KVBHCVFYURYTUCG B VHKark:text-white
+                                <p class="text-sm font-semibold text-gray-800 dark:text-white
                                     {{ !$notification->is_read ? 'text-blue-900 dark:text-blue-100' : '' }}">
                                     {{ $notification->title }}
                                 </p>
@@ -90,7 +90,7 @@
                                     {{ $notification->message }}
                                 </p>
                                 <p class="text-xs text-gray-400 mt-1.5">
-                                    {{ $notification->created_at->format('d M Y H:i') }}
+                                    {{ $notification->created_at->timezone(config('app.timezone'))->format('d M Y H:i') }}
                                     <span class="mx-1">•</span>
                                     {{ $notification->created_at->diffForHumans() }}
                                 </p>

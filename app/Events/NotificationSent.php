@@ -7,11 +7,11 @@ namespace App\Events;
 use App\Models\Notification;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Broadcasting\PrivateChannel;
-use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
+use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
-class NotificationSent implements ShouldBroadcast
+class NotificationSent implements ShouldBroadcastNow
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
@@ -39,8 +39,9 @@ class NotificationSent implements ShouldBroadcast
             'url' => $this->notification->url,
             'color' => $this->notification->color,
             'is_read' => false,
-            'created_at' => $this->notification->created_at->diffForHumans(),
-            'created_at_full' => $this->notification->created_at->format('d M Y H:i'),
+            'created_at' => 'just now',
+            'created_at_iso' => $this->notification->created_at->toIso8601String(),
+            'created_at_full' => $this->notification->created_at->timezone(config('app.timezone'))->format('d M Y H:i'),
         ];
     }
 }

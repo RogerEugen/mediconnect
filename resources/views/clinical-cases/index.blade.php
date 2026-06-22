@@ -21,20 +21,10 @@
                 <div class="mb-5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800">{{ session('success') }}</div>
             @endif
 
-            @if(auth()->user()->isSpecialist())
-                <div class="mb-6 rounded-2xl border border-purple-200 bg-gradient-to-r from-purple-50 to-indigo-50 p-5 dark:border-purple-900 dark:from-purple-950/30 dark:to-indigo-950/30">
-                    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                        <div>
-                            <p class="text-xs font-bold uppercase tracking-[0.18em] text-purple-600">Your specialist feed</p>
-                            <h2 class="mt-1 font-bold text-slate-900 dark:text-white">
-                                Cases matched to {{ auth()->user()->specializations->pluck('name')->join(', ') ?: 'your assigned specialties' }}
-                            </h2>
-                            <p class="mt-1 text-sm text-slate-600 dark:text-slate-300">Cases from unrelated specialties are hidden automatically for clinical relevance and privacy.</p>
-                        </div>
-                        <a href="{{ route('profile.edit') }}" class="shrink-0 rounded-xl border border-purple-200 bg-white px-4 py-2 text-center text-sm font-bold text-purple-700 hover:bg-purple-100 dark:border-purple-800 dark:bg-slate-900">View profile</a>
-                    </div>
-                </div>
-            @endif
+            <div class="mb-6 rounded-2xl border border-teal-200 bg-teal-50 p-5 dark:border-teal-900 dark:bg-teal-950/30">
+                <p class="text-xs font-bold uppercase tracking-[0.18em] text-teal-700">Open medical community</p>
+                <p class="mt-1 text-sm leading-6 text-teal-900 dark:text-teal-200">Every difficult case is visible to all active doctors and specialists. Contributing is voluntary; replies are shared with the whole clinical team.</p>
+            </div>
 
             <div class="mb-6 grid gap-4 sm:grid-cols-3">
                 <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">

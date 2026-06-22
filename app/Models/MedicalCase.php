@@ -44,6 +44,15 @@ class MedicalCase extends Model
         'private_reference' => 'encrypted',
     ];
 
+    protected static function booted(): void
+    {
+        static::created(function (MedicalCase $case) {
+            if ($case->posted_by) {
+                $case->followers()->syncWithoutDetaching([$case->posted_by]);
+            }
+        });
+    }
+
     public function patient()
     {
         return $this->belongsTo(Patient::class);
@@ -94,41 +103,16 @@ class MedicalCase extends Model
 
     public function scopeVisibleTo(Builder $query, User $user): Builder
     {
-        if ($user->isAdmin() || $user->isDoctor()) {
+        if ($user->isDoctor() || $user->isSpecialist()) {
             return $query;
         }
 
-        if (! $user->isSpecialist()) {
-            return $query->whereRaw('1 = 0');
-        }
-
-        $specializationIds = $user->specializations()
-            ->pluck('specializations.id');
-
-        return $query->where(function (Builder $query) use ($user, $specializationIds) {
-            $query->where('posted_by', $user->id)
-                ->orWhereNull('specialization_id');
-
-            if ($specializationIds->isNotEmpty()) {
-                $query->orWhereIn('specialization_id', $specializationIds);
-            }
-        });
+        return $query->whereRaw('1 = 0');
     }
 
     public function isVisibleTo(User $user): bool
     {
-        if ($user->isAdmin() || $user->isDoctor() || $this->posted_by === $user->id) {
-            return true;
-        }
-
-        if (! $user->isSpecialist()) {
-            return false;
-        }
-
-        return $this->specialization_id === null
-            || $user->specializations()
-                ->whereKey($this->specialization_id)
-                ->exists();
+        return $user->isDoctor() || $user->isSpecialist();
     }
 
     // Generate unique case number

@@ -16,6 +16,8 @@ class ClinicalCaseController extends Controller
 {
     public function index(Request $request): View
     {
+        $this->ensureClinician();
+
         $query = MedicalCase::query()
             ->visibleTo(Auth::user())
             ->with(['postedBy.profile', 'hospital', 'specialization'])
@@ -50,9 +52,7 @@ class ClinicalCaseController extends Controller
         };
 
         $cases = $query->paginate(12)->withQueryString();
-        $specializations = Auth::user()->isSpecialist()
-            ? Auth::user()->specializations()->where('is_active', true)->orderBy('name')->get()
-            : Specialization::where('is_active', true)->orderBy('name')->get();
+        $specializations = Specialization::where('is_active', true)->orderBy('name')->get();
         $visibleCases = MedicalCase::query()->visibleTo(Auth::user());
         $stats = [
             'open' => (clone $visibleCases)->whereIn('status', ['open', 'in_discussion'])->count(),
@@ -104,23 +104,17 @@ class ClinicalCaseController extends Controller
             'author_anonymous' => $request->boolean('author_anonymous'),
         ]);
 
-        $case->followers()->attach(Auth::id());
+        $case->loadMissing('specialization');
+        $specialtyName = $case->specialization?->name ?? 'clinical';
 
         User::where('is_active', true)
-            ->where(function ($query) use ($case) {
-                $query->where('role', 'doctor')
-                    ->orWhere(function ($query) use ($case) {
-                        $query->where('role', 'specialist')
-                            ->whereHas('specializations', fn ($specializations) => $specializations
-                                ->where('specializations.id', $case->specialization_id)
-                            );
-                    });
-            })
+            ->whereIn('role', ['doctor', 'specialist'])
             ->whereKeyNot(Auth::id())
             ->each(fn (User $user) => Notification::send(
                 $user->id,
-                'New clinical case for discussion',
-                "{$case->case_number}: {$case->title}",
+                "New {$specialtyName} case for discussion",
+                ($case->author_anonymous ? 'A verified clinician' : Auth::user()->name)
+                    ." shared {$case->case_number}: {$case->title}",
                 'new_case',
                 route('clinical-cases.show', $case)
             ));
@@ -156,6 +150,11 @@ class ClinicalCaseController extends Controller
     public function toggleFollow(MedicalCase $clinicalCase): RedirectResponse
     {
         $this->authorizeVisibility($clinicalCase);
+        abort_if(
+            $clinicalCase->posted_by === Auth::id(),
+            403,
+            'Case authors automatically follow their own discussions.'
+        );
 
         $attached = $clinicalCase->followers()->toggle(Auth::id());
         $following = count($attached['attached']) > 0;
@@ -168,8 +167,10 @@ class ClinicalCaseController extends Controller
 
     public function resolve(Request $request, MedicalCase $clinicalCase): RedirectResponse
     {
+        $this->authorizeVisibility($clinicalCase);
+
         abort_unless(
-            Auth::user()->isAdmin() || $clinicalCase->posted_by === Auth::id(),
+            $clinicalCase->posted_by === Auth::id(),
             403
         );
 
@@ -190,8 +191,10 @@ class ClinicalCaseController extends Controller
 
     public function reopen(MedicalCase $clinicalCase): RedirectResponse
     {
+        $this->authorizeVisibility($clinicalCase);
+
         abort_unless(
-            Auth::user()->isAdmin() || $clinicalCase->posted_by === Auth::id(),
+            $clinicalCase->posted_by === Auth::id(),
             403
         );
 
@@ -205,12 +208,14 @@ class ClinicalCaseController extends Controller
 
     public function destroy(MedicalCase $clinicalCase): RedirectResponse
     {
+        $this->authorizeVisibility($clinicalCase);
+
         abort_unless(
-            Auth::user()->isAdmin() || $clinicalCase->posted_by === Auth::id(),
+            $clinicalCase->posted_by === Auth::id(),
             403
         );
 
-        if (! Auth::user()->isAdmin() && $clinicalCase->discussions()->exists()) {
+        if ($clinicalCase->discussions()->exists()) {
             return back()->with('error', 'A case with contributions cannot be deleted. Resolve it instead.');
         }
 

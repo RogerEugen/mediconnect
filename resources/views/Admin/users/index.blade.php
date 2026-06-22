@@ -27,24 +27,59 @@
                 </div>
             @endif
 
-            {{-- Filter tabs --}}
-            <div class="flex gap-2 mb-4">
-                <a href="{{ route('admin.users.index') }}"
+            {{-- Role shortcuts --}}
+            <div class="mb-4 flex flex-wrap gap-2">
+                <a href="{{ route('admin.users.index', request()->except(['role', 'page'])) }}"
                    class="px-4 py-2 text-sm font-medium rounded-lg transition
                        {{ !request('role') ? 'bg-gray-800 text-white' : 'bg-white border border-gray-300 text-gray-600 hover:bg-gray-50' }}">
-                    All
+                    All ({{ $roleCounts['all'] }})
                 </a>
-                <a href="{{ route('admin.users.index', ['role' => 'doctor']) }}"
+                <a href="{{ route('admin.users.index', [...request()->except(['role', 'page']), 'role' => 'doctor']) }}"
                    class="px-4 py-2 text-sm font-medium rounded-lg transition
                        {{ request('role') === 'doctor' ? 'bg-blue-600 text-white' : 'bg-white border border-gray-300 text-gray-600 hover:bg-gray-50' }}">
-                    Doctors
+                    Doctors ({{ $roleCounts['doctor'] }})
                 </a>
-                <a href="{{ route('admin.users.index', ['role' => 'specialist']) }}"
+                <a href="{{ route('admin.users.index', [...request()->except(['role', 'page']), 'role' => 'specialist']) }}"
                    class="px-4 py-2 text-sm font-medium rounded-lg transition
                        {{ request('role') === 'specialist' ? 'bg-purple-600 text-white' : 'bg-white border border-gray-300 text-gray-600 hover:bg-gray-50' }}">
-                    Specialists
+                    Specialists ({{ $roleCounts['specialist'] }})
                 </a>
             </div>
+
+            <form method="GET" class="mb-5 rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+                <div class="grid gap-3 md:grid-cols-2 lg:grid-cols-5">
+                    <input name="search" value="{{ request('search') }}" placeholder="Search name or email..."
+                           class="rounded-lg border-gray-300 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-white">
+                    <select name="role" class="rounded-lg border-gray-300 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-white">
+                        <option value="">All professions</option>
+                        <option value="doctor" @selected(request('role') === 'doctor')>Doctors</option>
+                        <option value="specialist" @selected(request('role') === 'specialist')>Specialists</option>
+                    </select>
+                    <select name="specialization" class="rounded-lg border-gray-300 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-white">
+                        <option value="">All specialties</option>
+                        @foreach($specializations as $specialization)
+                            <option value="{{ $specialization->id }}" @selected(request('specialization') == $specialization->id)>{{ $specialization->name }}</option>
+                        @endforeach
+                    </select>
+                    <select name="hospital" class="rounded-lg border-gray-300 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-white">
+                        <option value="">All hospitals</option>
+                        @foreach($hospitals as $hospital)
+                            <option value="{{ $hospital->id }}" @selected(request('hospital') == $hospital->id)>{{ $hospital->name }}</option>
+                        @endforeach
+                    </select>
+                    <select name="status" class="rounded-lg border-gray-300 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-white">
+                        <option value="">Any account status</option>
+                        <option value="active" @selected(request('status') === 'active')>Active</option>
+                        <option value="inactive" @selected(request('status') === 'inactive')>Inactive</option>
+                    </select>
+                </div>
+                <div class="mt-3 flex flex-wrap items-center gap-3">
+                    <button class="rounded-lg bg-gray-900 px-5 py-2 text-sm font-semibold text-white hover:bg-gray-700 dark:bg-blue-600 dark:hover:bg-blue-700">Apply filters</button>
+                    @if(request()->hasAny(['search', 'role', 'specialization', 'hospital', 'status']))
+                        <a href="{{ route('admin.users.index') }}" class="text-sm font-semibold text-blue-600 hover:underline">Clear filters</a>
+                    @endif
+                </div>
+            </form>
 
             <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm overflow-hidden">
                 <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">

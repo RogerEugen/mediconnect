@@ -6,6 +6,7 @@ namespace App\Models;
 
 use App\Events\NotificationSent;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Log;
 
 class Notification extends Model
 {
@@ -30,7 +31,15 @@ class Notification extends Model
     protected static function booted(): void
     {
         static::created(function (Notification $notification) {
-            broadcast(new NotificationSent($notification));
+            try {
+                broadcast(new NotificationSent($notification));
+            } catch (\Throwable $exception) {
+                Log::warning('Realtime notification broadcast failed.', [
+                    'notification_id' => $notification->id,
+                    'user_id' => $notification->user_id,
+                    'error' => $exception->getMessage(),
+                ]);
+            }
         });
     }
 

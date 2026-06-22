@@ -16,12 +16,7 @@ class AdminController extends Controller
             'unanswered' => MedicalCase::doesntHave('discussions')->count(),
             'resolved' => MedicalCase::where('status', 'resolved')->count(),
         ];
-        $recentCases = MedicalCase::with(['postedBy', 'specialization'])
-            ->withCount('discussions')
-            ->latest()
-            ->take(6)
-            ->get();
 
-        return view('Admin.Dashboard', compact('stats', 'recentCases'));
+        return view('Admin.Dashboard', compact('stats'));
     }
 }

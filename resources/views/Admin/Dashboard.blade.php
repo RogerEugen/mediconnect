@@ -38,10 +38,10 @@
                 </a>
             </div>
 
-            @include('clinical-cases.partials.dashboard-list', [
-                'title' => 'Latest clinical discussions',
-                'emptyMessage' => 'No clinical discussions have been posted yet.',
-            ])
+            <div class="mt-6 rounded-2xl border border-blue-200 bg-blue-50 p-5 text-sm leading-6 text-blue-900 dark:border-blue-900 dark:bg-blue-950/30 dark:text-blue-200">
+                <p class="font-bold">Clinical discussion privacy</p>
+                <p class="mt-1">Administrators can monitor aggregate case activity above, but clinical case details and replies remain available only to doctors and specialists.</p>
+            </div>
         </div>
     </div>
 </x-app-layout>

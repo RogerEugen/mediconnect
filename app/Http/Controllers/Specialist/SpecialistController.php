@@ -17,7 +17,7 @@ class SpecialistController extends Controller
 
         $visibleCases = MedicalCase::query()->visibleTo($specialist);
         $stats = [
-            'relevant_cases' => (clone $visibleCases)->whereIn('status', ['open', 'in_discussion'])->count(),
+            'community_cases' => (clone $visibleCases)->whereIn('status', ['open', 'in_discussion'])->count(),
             'my_contributions' => Discussion::where('user_id', $specialist->id)->count(),
             'unanswered' => (clone $visibleCases)->doesntHave('discussions')->count(),
             'resolved' => (clone $visibleCases)->where('status', 'resolved')->count(),

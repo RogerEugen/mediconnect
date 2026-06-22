@@ -104,11 +104,11 @@ class ClinicalDiscussionController extends Controller
         $this->authorizeVisibility($discussion->case);
 
         abort_unless(
-            Auth::user()->isAdmin() || $discussion->user_id === Auth::id(),
+            $discussion->user_id === Auth::id(),
             403
         );
 
-        if ($discussion->replies()->exists() && ! Auth::user()->isAdmin()) {
+        if ($discussion->replies()->exists()) {
             return back()->with('error', 'A contribution with replies cannot be deleted.');
         }
 

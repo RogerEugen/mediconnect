@@ -22,12 +22,45 @@ class UserController extends Controller
             ->whereIn('role', ['doctor', 'specialist']);
 
         if ($request->filled('role')) {
-            $query->where('role', $request->role);
+            $request->validate(['role' => ['in:doctor,specialist']]);
+            $query->where('role', $request->string('role'));
         }
 
-        $users = $query->latest()->paginate(15);
+        if ($request->filled('specialization')) {
+            $request->validate(['specialization' => ['integer', 'exists:specializations,id']]);
+            $query->whereHas('specializations', fn ($specializations) => $specializations
+                ->where('specializations.id', $request->integer('specialization'))
+            );
+        }
 
-        return view('Admin.users.index', compact('users'));
+        if ($request->filled('hospital')) {
+            $request->validate(['hospital' => ['integer', 'exists:hospitals,id']]);
+            $query->where('hospital_id', $request->integer('hospital'));
+        }
+
+        if ($request->filled('status')) {
+            $request->validate(['status' => ['in:active,inactive']]);
+            $query->where('is_active', $request->string('status')->toString() === 'active');
+        }
+
+        if ($request->filled('search')) {
+            $search = trim($request->string('search')->toString());
+            $query->where(function ($users) use ($search) {
+                $users->where('name', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%");
+            });
+        }
+
+        $users = $query->latest()->paginate(15)->withQueryString();
+        $specializations = Specialization::where('is_active', true)->orderBy('name')->get();
+        $hospitals = Hospital::where('is_active', true)->orderBy('name')->get();
+        $roleCounts = [
+            'all' => User::whereIn('role', ['doctor', 'specialist'])->count(),
+            'doctor' => User::where('role', 'doctor')->count(),
+            'specialist' => User::where('role', 'specialist')->count(),
+        ];
+
+        return view('Admin.users.index', compact('users', 'specializations', 'hospitals', 'roleCounts'));
     }
 
     public function create()

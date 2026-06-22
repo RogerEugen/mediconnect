@@ -73,12 +73,36 @@
                 unreadCount: 0,
                 notifications: [],
                 soundEnabled: true,
+                soundUnlocked: false,
 
                 init() {
+                    this.prepareSound();
                     this.loadNotifications();
                     this.listenForRealtime();
-                    // Fallback poll every 60s
-                    setInterval(() => this.loadNotifications(), 60000);
+                    // Recovery poll in case the websocket briefly reconnects.
+                    setInterval(() => this.loadNotifications(), 30000);
+                },
+
+                prepareSound() {
+                    const unlock = () => {
+                        const audio = document.getElementById('notifSound');
+                        if (!audio) return;
+
+                        audio.volume = 0;
+                        const attempt = audio.play();
+                        if (attempt) {
+                            attempt.then(() => {
+                                audio.pause();
+                                audio.currentTime = 0;
+                                audio.volume = 0.7;
+                                this.soundUnlocked = true;
+                            }).catch(() => {});
+                        }
+                    };
+
+                    document.addEventListener('click', unlock, { once: true });
+                    document.addEventListener('keydown', unlock, { once: true });
+                    document.addEventListener('touchstart', unlock, { once: true });
                 },
 
                 async loadNotifications() {
@@ -141,7 +165,7 @@
                         const audio = document.getElementById('notifSound');
                         if (audio) {
                             audio.currentTime = 0;
-                            audio.volume = 0.6;
+                            audio.volume = 0.7;
                             audio.play().catch(() => {});
                         }
                     } catch(e) {}
@@ -166,6 +190,7 @@
                                 url:     data.url ?? null,
                                 is_read: false,
                                 time:    data.created_at,
+                                created_at_iso: data.created_at_iso,
                             });
 
                             // Keep max 8 in dropdown
@@ -175,8 +200,10 @@
 
                             this.unreadCount++;
 
-                            // Play sound
-                            this.playSound();
+                            // A case alert is the high-priority audible event.
+                            if (data.type === 'new_case') {
+                                this.playSound();
+                            }
 
                             // Show toast
                             this.showToast(data.title, data.message, data.color ?? 'blue');

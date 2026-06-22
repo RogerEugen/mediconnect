@@ -44,24 +44,6 @@
                        </div>
                    </x-nav-link>
 
-                   {{-- Cases --}}
-                   <x-nav-link :href="route('clinical-cases.index')" :active="request()->routeIs('clinical-cases.*')">
-                       <div class="flex items-center gap-2">
-                           <x-heroicon-o-document-text class="w-5 h-5" />
-                           <span>Discussions</span>
-
-                           @php
-                           $openCases = \App\Models\MedicalCase::where('status','open')->count();
-                           @endphp
-
-                           @if($openCases > 0)
-                           <span class="ml-1 px-1.5 py-0.5 text-xs bg-red-100 text-red-700 rounded-full font-medium">
-                               {{ $openCases }}
-                           </span>
-                           @endif
-                       </div>
-                   </x-nav-link>
-
                 </div>
             </div>
 
@@ -174,7 +156,15 @@
                         <x-dropdown-link :href="route('profile.edit')">Profile</x-dropdown-link>
                         <x-dropdown-link :href="route('notifications.index')">
                             Notifications
-                            @php $unread = Auth::user()->notifications()->where('is_read', false)->count(); @endphp
+                            @php
+                                $unread = Auth::user()->notifications()
+                                    ->where('is_read', false)
+                                    ->whereNotIn('type', [
+                                        'new_case', 'new_discussion', 'case_assigned', 'specialist_assigned',
+                                        'case_accepted', 'case_declined', 'case_completed', 'case_resolved',
+                                    ])
+                                    ->count();
+                            @endphp
                             @if($unread > 0)
                                 <span class="ml-1 px-1.5 py-0.5 text-xs bg-red-100 text-red-700 rounded-full">{{ $unread }}</span>
                             @endif
@@ -210,7 +200,6 @@
             <x-responsive-nav-link :href="route('admin.hospitals.index')" :active="request()->routeIs('admin.hospitals.*')">Hospitals</x-responsive-nav-link>
             <x-responsive-nav-link :href="route('admin.specializations.index')" :active="request()->routeIs('admin.specializations.*')">Specializations</x-responsive-nav-link>
             <x-responsive-nav-link :href="route('admin.users.index')" :active="request()->routeIs('admin.users.*')">Manage Users</x-responsive-nav-link>
-            <x-responsive-nav-link :href="route('clinical-cases.index')" :active="request()->routeIs('clinical-cases.*')">Discussions</x-responsive-nav-link>
         </div>
         <div class="pt-4 pb-1 border-t border-gray-200 px-4">
             <div class="flex items-center justify-between">

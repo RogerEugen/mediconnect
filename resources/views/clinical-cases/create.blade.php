@@ -44,7 +44,7 @@
                                         <option value="{{ $specialization->id }}" @selected(old('specialization_id') == $specialization->id)>{{ $specialization->name }}</option>
                                     @endforeach
                                 </select>
-                                <p class="mt-1.5 text-xs leading-5 text-slate-500">Only specialists assigned to this specialty will receive and access the case.</p>
+                                <p class="mt-1.5 text-xs leading-5 text-slate-500">This labels the clinical area. Every active doctor and specialist can see the case and choose whether to contribute.</p>
                                 @error('specialization_id')<p class="mt-1 text-xs text-rose-600">{{ $message }}</p>@enderror
                             </div>
                             <div>
@@ -102,7 +102,7 @@
                         <input id="private_reference" name="private_reference" value="{{ old('private_reference') }}" maxlength="100"
                                placeholder="e.g. your hospital's non-public record code"
                                class="w-full rounded-xl border-slate-300 focus:border-teal-500 focus:ring-teal-500 dark:border-slate-600 dark:bg-slate-900 dark:text-white">
-                        <p class="mt-1.5 text-xs leading-5 text-slate-500">Encrypted and visible only to you and administrators. Do not enter the patient's name, phone number or national ID.</p>
+                        <p class="mt-1.5 text-xs leading-5 text-slate-500">Encrypted and visible only to you. Use a non-identifying local code—not a name, phone number or national ID.</p>
                         @error('private_reference')<p class="mt-1 text-xs text-rose-600">{{ $message }}</p>@enderror
                     </div>
                 </section>
@@ -142,7 +142,7 @@
                         <input type="checkbox" name="author_anonymous" value="1" @checked(old('author_anonymous')) class="mt-1 rounded border-slate-300 text-teal-600 focus:ring-teal-500">
                         <span>
                             <span class="block text-sm font-semibold text-slate-800 dark:text-slate-100">Hide my name from the discussion</span>
-                            <span class="mt-0.5 block text-xs leading-5 text-slate-500">Your identity remains available to administrators for accountability and audit.</span>
+                            <span class="mt-0.5 block text-xs leading-5 text-slate-500">Other clinicians will see “Verified clinician.” Security audit events remain recorded without exposing the clinical discussion to administrators.</span>
                         </span>
                     </label>
                     <label class="mt-5 flex items-start gap-3 rounded-xl bg-slate-50 p-4 dark:bg-slate-900">
