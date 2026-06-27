@@ -1,4 +1,5 @@
 <?php
+
 // app/Models/Attachment.php
 
 namespace App\Models;
@@ -12,6 +13,7 @@ class Attachment extends Model
 
     protected $fillable = [
         'medical_record_id',
+        'case_id',
         'uploaded_by',
         'file_name',
         'file_path',
@@ -27,12 +29,17 @@ class Attachment extends Model
         return $this->belongsTo(MedicalRecord::class);
     }
 
+    public function clinicalCase()
+    {
+        return $this->belongsTo(MedicalCase::class, 'case_id');
+    }
+
     public function uploadedBy()
     {
         return $this->belongsTo(User::class, 'uploaded_by');
     }
 
-     public function getUrlAttribute(): string
+    public function getUrlAttribute(): string
     {
         return Storage::url($this->file_path);
     }
@@ -49,9 +56,12 @@ class Attachment extends Model
 
     public function getFileSizeFormattedAttribute(): string
     {
-        if (!$this->file_size) return '—';
+        if (! $this->file_size) {
+            return '—';
+        }
+
         return $this->file_size < 1024
-            ? $this->file_size . ' KB'
-            : round($this->file_size / 1024, 1) . ' MB';
+            ? $this->file_size.' KB'
+            : round($this->file_size / 1024, 1).' MB';
     }
 }
