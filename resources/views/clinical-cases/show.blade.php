@@ -30,6 +30,28 @@
                 <div class="mb-5 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-800">{{ session('error') }}</div>
             @endif
 
+            @if($similarCases->isNotEmpty())
+                <section class="mb-6 overflow-hidden rounded-2xl border border-indigo-200 bg-gradient-to-r from-indigo-50 to-cyan-50 shadow-sm dark:border-indigo-900 dark:from-indigo-950/30 dark:to-cyan-950/20">
+                    <div class="border-b border-indigo-200/70 px-6 py-5 dark:border-indigo-900">
+                        <p class="text-xs font-bold uppercase tracking-[0.18em] text-indigo-600">Similar case intelligence</p>
+                        <h2 class="mt-1 text-lg font-bold text-slate-900 dark:text-white">You may find a useful solution here</h2>
+                        <p class="mt-1 text-sm text-slate-600 dark:text-slate-300">These de-identified cases were matched from clinical wording and specialty. Review recommendations before applying them.</p>
+                    </div>
+                    <div class="grid gap-3 p-4 md:grid-cols-2">
+                        @foreach($similarCases as $match)
+                            <a href="{{ route('clinical-cases.similar', [$clinicalCase, $match['case']]) }}" class="group rounded-xl border border-white bg-white/90 p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-indigo-300 hover:shadow-md dark:border-slate-700 dark:bg-slate-800">
+                                <div class="flex items-center justify-between gap-3">
+                                    <span class="rounded-full bg-indigo-100 px-2.5 py-1 text-xs font-extrabold text-indigo-700">{{ $match['score'] }}% similar</span>
+                                    <span class="text-xs font-medium text-slate-500">{{ $match['case']->discussions_count }} insights</span>
+                                </div>
+                                <h3 class="mt-3 line-clamp-2 font-bold text-slate-900 group-hover:text-indigo-700 dark:text-white">{{ $match['case']->title }}</h3>
+                                <p class="mt-2 text-xs font-semibold text-indigo-700">View solution & discussion →</p>
+                            </a>
+                        @endforeach
+                    </div>
+                </section>
+            @endif
+
             <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
                 <div class="space-y-6">
                     <article class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800">
@@ -80,6 +102,19 @@
                                 <section class="rounded-2xl border border-emerald-200 bg-emerald-50 p-5 dark:border-emerald-900 dark:bg-emerald-950/30">
                                     <h2 class="text-xs font-bold uppercase tracking-wider text-emerald-700">Clinical resolution summary</h2>
                                     <p class="mt-2 whitespace-pre-line text-sm leading-7 text-emerald-950 dark:text-emerald-100">{{ $clinicalCase->resolution_notes }}</p>
+                                </section>
+                            @endif
+                            @if($clinicalCase->attachments->isNotEmpty())
+                                <section class="border-t border-slate-100 pt-5 dark:border-slate-700">
+                                    <h2 class="text-xs font-bold uppercase tracking-wider text-slate-400">Clinical attachments</h2>
+                                    <div class="mt-3 grid gap-3 sm:grid-cols-2">
+                                        @foreach($clinicalCase->attachments as $attachment)
+                                            <a href="{{ route('clinical-cases.attachments.show', [$clinicalCase, $attachment]) }}" target="_blank" class="flex items-center gap-3 rounded-xl border border-slate-200 p-3 hover:border-teal-300 hover:bg-teal-50 dark:border-slate-700 dark:hover:bg-slate-900">
+                                                <span class="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100 text-blue-700">{{ $attachment->is_image ? '🖼️' : '📄' }}</span>
+                                                <span class="min-w-0"><span class="block truncate text-sm font-bold text-slate-800 dark:text-white">{{ $attachment->file_name }}</span><span class="text-xs text-slate-500">{{ $attachment->file_size_formatted }} · Open securely</span></span>
+                                            </a>
+                                        @endforeach
+                                    </div>
                                 </section>
                             @endif
                         </div>

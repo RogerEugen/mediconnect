@@ -95,6 +95,11 @@ class MedicalCase extends Model
         return $this->hasMany(Discussion::class, 'case_id');
     }
 
+    public function attachments()
+    {
+        return $this->hasMany(Attachment::class, 'case_id');
+    }
+
     public function followers()
     {
         return $this->belongsToMany(User::class, 'case_followers', 'case_id', 'user_id')
@@ -103,8 +108,15 @@ class MedicalCase extends Model
 
     public function scopeVisibleTo(Builder $query, User $user): Builder
     {
-        if ($user->isDoctor() || $user->isSpecialist()) {
-            return $query;
+        if ($user->isDoctor()) {
+            return $query->where('posted_by', $user->id);
+        }
+
+        if ($user->isSpecialist()) {
+            return $query->whereIn(
+                'specialization_id',
+                $user->specializations()->select('specializations.id')
+            );
         }
 
         return $query->whereRaw('1 = 0');
@@ -112,7 +124,12 @@ class MedicalCase extends Model
 
     public function isVisibleTo(User $user): bool
     {
-        return $user->isDoctor() || $user->isSpecialist();
+        if ($user->isDoctor()) {
+            return $this->posted_by === $user->id;
+        }
+
+        return $user->isSpecialist()
+            && $user->specializations()->whereKey($this->specialization_id)->exists();
     }
 
     // Generate unique case number

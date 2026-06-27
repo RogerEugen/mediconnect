@@ -19,7 +19,7 @@
                 </div>
             </div>
 
-            <form method="POST" action="{{ route('clinical-cases.store') }}" class="space-y-6">
+            <form method="POST" action="{{ route('clinical-cases.store') }}" enctype="multipart/form-data" class="space-y-6">
                 @csrf
 
                 <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
@@ -44,7 +44,7 @@
                                         <option value="{{ $specialization->id }}" @selected(old('specialization_id') == $specialization->id)>{{ $specialization->name }}</option>
                                     @endforeach
                                 </select>
-                                <p class="mt-1.5 text-xs leading-5 text-slate-500">This labels the clinical area. Every active doctor and specialist can see the case and choose whether to contribute.</p>
+                                <p class="mt-1.5 text-xs leading-5 text-slate-500">This labels the clinical area. Doctors can see the case, while specialists only see cases matching their registered specialties.</p>
                                 @error('specialization_id')<p class="mt-1 text-xs text-rose-600">{{ $message }}</p>@enderror
                             </div>
                             <div>
@@ -127,6 +127,20 @@
                                 @error($name)<p class="mt-1 text-xs text-rose-600">{{ $message }}</p>@enderror
                             </div>
                         @endforeach
+                        <div class="rounded-2xl border border-dashed border-blue-300 bg-blue-50/60 p-5 dark:border-blue-900 dark:bg-blue-950/20">
+                            <div class="flex items-start gap-3">
+                                <svg class="mt-0.5 h-6 w-6 shrink-0 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/></svg>
+                                <div class="min-w-0 flex-1">
+                                    <label for="attachments" class="block text-sm font-bold text-slate-800 dark:text-white">Upload clinical images or documents</label>
+                                    <p class="mt-1 text-xs leading-5 text-slate-500">X-rays, scans, wound images or PDF reports. Remove patient names and identifiers before uploading.</p>
+                                    <input id="attachments" type="file" name="attachments[]" multiple accept=".jpg,.jpeg,.png,.webp,.pdf"
+                                           class="mt-3 block w-full text-sm text-slate-600 file:mr-4 file:rounded-lg file:border-0 file:bg-blue-600 file:px-4 file:py-2 file:text-sm file:font-bold file:text-white hover:file:bg-blue-700">
+                                    <p id="attachment-summary" class="mt-2 text-xs font-medium text-blue-700">Up to 5 files, maximum 10 MB each.</p>
+                                    @error('attachments')<p class="mt-1 text-xs text-rose-600">{{ $message }}</p>@enderror
+                                    @error('attachments.*')<p class="mt-1 text-xs text-rose-600">{{ $message }}</p>@enderror
+                                </div>
+                            </div>
+                        </div>
                         <div>
                             <label for="discussion_question" class="mb-1.5 block text-sm font-semibold text-slate-700 dark:text-slate-200">Specific question for colleagues <span class="text-rose-500">*</span></label>
                             <textarea id="discussion_question" name="discussion_question" rows="3" required
@@ -159,4 +173,13 @@
             </form>
         </div>
     </div>
+    <script>
+        const attachments = document.getElementById('attachments');
+        const summary = document.getElementById('attachment-summary');
+        attachments.addEventListener('change', () => {
+            summary.textContent = attachments.files.length
+                ? `${attachments.files.length} file(s) selected: ${Array.from(attachments.files).map(file => file.name).join(', ')}`
+                : 'Up to 5 files, maximum 10 MB each.';
+        });
+    </script>
 </x-app-layout>

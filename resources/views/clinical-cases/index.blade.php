@@ -6,7 +6,7 @@
                 <h1 class="mt-1 text-2xl font-bold text-slate-900 dark:text-white">Case Discussions</h1>
                 <p class="mt-1 text-sm text-slate-500">Review difficult anonymized cases and share evidence-informed clinical perspectives.</p>
             </div>
-            @if(in_array(auth()->user()->role, ['doctor', 'specialist']))
+            @if(auth()->user()->isDoctor())
                 <a href="{{ route('clinical-cases.create') }}"
                    class="inline-flex items-center justify-center gap-2 rounded-xl bg-teal-600 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-teal-600/20 transition hover:bg-teal-700">
                     <span class="text-lg leading-none">+</span> Start a discussion
@@ -22,8 +22,8 @@
             @endif
 
             <div class="mb-6 rounded-2xl border border-teal-200 bg-teal-50 p-5 dark:border-teal-900 dark:bg-teal-950/30">
-                <p class="text-xs font-bold uppercase tracking-[0.18em] text-teal-700">Open medical community</p>
-                <p class="mt-1 text-sm leading-6 text-teal-900 dark:text-teal-200">Every difficult case is visible to all active doctors and specialists. Contributing is voluntary; replies are shared with the whole clinical team.</p>
+                <p class="text-xs font-bold uppercase tracking-[0.18em] text-teal-700">{{ auth()->user()->isDoctor() ? 'Your clinical cases' : 'Matched specialist cases' }}</p>
+                <p class="mt-1 text-sm leading-6 text-teal-900 dark:text-teal-200">{{ auth()->user()->isDoctor() ? 'Only cases you posted appear here. Similar solved cases are suggested privately inside your own case.' : 'Only cases matching your verified specialties appear here.' }}</p>
             </div>
 
             <div class="mb-6 grid gap-4 sm:grid-cols-3">
@@ -69,14 +69,12 @@
                     <button class="rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-700 dark:bg-teal-600 dark:hover:bg-teal-700">Apply filters</button>
                 </div>
                 <div class="mt-3 flex flex-wrap gap-4 text-sm">
-                    <label class="inline-flex items-center gap-2 text-slate-600 dark:text-slate-300">
-                        <input type="checkbox" name="mine" value="1" @checked(request()->boolean('mine')) class="rounded border-slate-300 text-teal-600 focus:ring-teal-500">
-                        My discussions
-                    </label>
+                    @if(auth()->user()->isSpecialist())
                     <label class="inline-flex items-center gap-2 text-slate-600 dark:text-slate-300">
                         <input type="checkbox" name="following" value="1" @checked(request()->boolean('following')) class="rounded border-slate-300 text-teal-600 focus:ring-teal-500">
                         Following
                     </label>
+                    @endif
                     @if(request()->hasAny(['search', 'specialization', 'status', 'sort', 'mine', 'following']))
                         <a href="{{ route('clinical-cases.index') }}" class="font-medium text-teal-700 hover:underline">Clear filters</a>
                     @endif

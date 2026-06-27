@@ -2,14 +2,17 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Attachment;
 use App\Models\AuditLog;
 use App\Models\MedicalCase;
 use App\Models\Notification;
 use App\Models\Specialization;
 use App\Models\User;
+use App\Services\CaseSimilarityService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 
 class ClinicalCaseController extends Controller
@@ -66,8 +69,9 @@ class ClinicalCaseController extends Controller
     public function create(): View
     {
         $this->ensureClinician();
+        abort_unless(Auth::user()->isDoctor(), 403, 'Only doctors can publish clinical cases.');
 
-        $specializations = Specialization::where('is_active', true)->orderBy('name')->get();
+        $specializations = $this->availableSpecializations();
 
         return view('clinical-cases.create', compact('specializations'));
     }
@@ -75,6 +79,7 @@ class ClinicalCaseController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $this->ensureClinician();
+        abort_unless(Auth::user()->isDoctor(), 403, 'Only doctors can publish clinical cases.');
 
         $validated = $request->validate([
             'title' => ['required', 'string', 'max:255'],
@@ -91,9 +96,11 @@ class ClinicalCaseController extends Controller
             'specialization_id' => ['required', 'exists:specializations,id'],
             'author_anonymous' => ['nullable', 'boolean'],
             'privacy_confirmation' => ['accepted'],
+            'attachments' => ['nullable', 'array', 'max:5'],
+            'attachments.*' => ['file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:10240'],
         ]);
 
-        unset($validated['privacy_confirmation']);
+        unset($validated['privacy_confirmation'], $validated['attachments']);
 
         $case = MedicalCase::create([
             ...$validated,
@@ -104,11 +111,24 @@ class ClinicalCaseController extends Controller
             'author_anonymous' => $request->boolean('author_anonymous'),
         ]);
 
+        foreach ($request->file('attachments', []) as $file) {
+            $path = $file->store("case-attachments/{$case->id}", 'local');
+            $case->attachments()->create([
+                'uploaded_by' => Auth::id(),
+                'file_name' => $file->getClientOriginalName(),
+                'file_path' => $path,
+                'file_type' => $file->getMimeType(),
+                'file_size' => (int) ceil($file->getSize() / 1024),
+            ]);
+        }
+
         $case->loadMissing('specialization');
         $specialtyName = $case->specialization?->name ?? 'clinical';
 
         User::where('is_active', true)
-            ->whereIn('role', ['doctor', 'specialist'])
+            ->where('role', 'specialist')
+            ->whereHas('specializations', fn ($specializations) => $specializations
+                ->where('specializations.id', $case->specialization_id))
             ->whereKeyNot(Auth::id())
             ->each(fn (User $user) => Notification::send(
                 $user->id,
@@ -123,10 +143,10 @@ class ClinicalCaseController extends Controller
 
         return redirect()
             ->route('clinical-cases.show', $case)
-            ->with('success', 'Clinical case published. The medical community has been notified.');
+            ->with('success', 'Clinical case published. Matching specialists have been notified. Similar solved cases are shown below when available.');
     }
 
-    public function show(MedicalCase $clinicalCase): View
+    public function show(MedicalCase $clinicalCase, CaseSimilarityService $similarity): View
     {
         $this->authorizeVisibility($clinicalCase);
 
@@ -134,6 +154,7 @@ class ClinicalCaseController extends Controller
             'postedBy.profile',
             'hospital',
             'specialization',
+            'attachments',
             'followers',
             'discussions' => fn ($query) => $query->topLevel()->with([
                 'user.profile',
@@ -144,7 +165,60 @@ class ClinicalCaseController extends Controller
         $isFollowing = $clinicalCase->followers->contains(Auth::id());
         AuditLog::record('viewed_case', "Viewed clinical case {$clinicalCase->case_number}", $clinicalCase);
 
-        return view('clinical-cases.show', compact('clinicalCase', 'isFollowing'));
+        $similarCases = Auth::user()->isDoctor()
+            ? $similarity->matchesFor($clinicalCase)
+            : collect();
+
+        return view('clinical-cases.show', compact('clinicalCase', 'isFollowing', 'similarCases'));
+    }
+
+    public function similarInsight(
+        MedicalCase $clinicalCase,
+        MedicalCase $similarCase,
+        CaseSimilarityService $similarity
+    ): View {
+        abort_unless(Auth::user()->isDoctor() && $clinicalCase->posted_by === Auth::id(), 403);
+        abort_if($clinicalCase->is($similarCase) || $similarCase->posted_by === Auth::id(), 404);
+
+        $score = $similarity->score($clinicalCase, $similarCase);
+        abort_unless(
+            $score >= 30 && ($similarCase->resolution_notes || $similarCase->discussions()->exists()),
+            403,
+            'This case is not an eligible similar-case insight.'
+        );
+
+        $similarCase->load([
+            'specialization',
+            'attachments',
+            'discussions' => fn ($query) => $query->topLevel()->with(['user', 'replies.user'])->oldest(),
+        ])->loadCount('discussions');
+
+        AuditLog::record('viewed_similar_case', "Viewed {$score}% similar insight for {$clinicalCase->case_number}", $similarCase);
+
+        return view('clinical-cases.similar-insight', compact('clinicalCase', 'similarCase', 'score'));
+    }
+
+    public function attachment(
+        MedicalCase $clinicalCase,
+        Attachment $attachment,
+        CaseSimilarityService $similarity
+    ) {
+        abort_unless($attachment->case_id === $clinicalCase->id, 404);
+
+        $allowed = $clinicalCase->isVisibleTo(Auth::user());
+        if (! $allowed && Auth::user()->isDoctor()) {
+            $hasInsight = $clinicalCase->resolution_notes || $clinicalCase->discussions()->exists();
+            $allowed = $hasInsight && MedicalCase::where('posted_by', Auth::id())->get()
+                ->contains(fn (MedicalCase $source) => $similarity->score($source, $clinicalCase) >= 30);
+        }
+        abort_unless($allowed, 403);
+        abort_unless(Storage::disk('local')->exists($attachment->file_path), 404);
+
+        return response()->file(Storage::disk('local')->path($attachment->file_path), [
+            'Content-Type' => $attachment->file_type ?: 'application/octet-stream',
+            'Content-Disposition' => 'inline; filename="'.str_replace('"', '', $attachment->file_name).'"',
+            'X-Content-Type-Options' => 'nosniff',
+        ]);
     }
 
     public function toggleFollow(MedicalCase $clinicalCase): RedirectResponse
@@ -232,5 +306,16 @@ class ClinicalCaseController extends Controller
     private function authorizeVisibility(MedicalCase $clinicalCase): void
     {
         abort_unless($clinicalCase->isVisibleTo(Auth::user()), 403);
+    }
+
+    private function availableSpecializations()
+    {
+        $query = Specialization::where('is_active', true)->orderBy('name');
+
+        if (Auth::user()->isSpecialist()) {
+            $query->whereHas('doctors', fn ($doctors) => $doctors->whereKey(Auth::id()));
+        }
+
+        return $query->get();
     }
 }
