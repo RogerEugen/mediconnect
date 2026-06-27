@@ -22,8 +22,11 @@ function clinician(string $role, ?Hospital $hospital = null): User
 
 function discussionCase(User $author, Hospital $hospital, Specialization $specialization): MedicalCase
 {
+    static $sequence = 0;
+    $sequence++;
+
     return MedicalCase::create([
-        'case_number' => 'CASE-2026-0001',
+        'case_number' => 'CASE-2026-'.str_pad((string) $sequence, 4, '0', STR_PAD_LEFT),
         'posted_by' => $author->id,
         'hospital_id' => $hospital->id,
         'specialization_id' => $specialization->id,
@@ -40,19 +43,28 @@ function discussionCase(User $author, Hospital $hospital, Specialization $specia
     ]);
 }
 
-test('all doctors and specialists can view a difficult case regardless of specialty', function () {
+test('a specialist sees matching specialties while a doctor sees their own cases', function () {
     $hospital = Hospital::create(['name' => 'MediConnect Hospital']);
     $cardiology = Specialization::create(['name' => 'Cardiology']);
     $neurology = Specialization::create(['name' => 'Neurology']);
     $author = clinician('doctor', $hospital);
     $specialist = clinician('specialist', $hospital);
     $specialist->specializations()->attach($neurology->id);
-    $case = discussionCase($author, $hospital, $cardiology);
+    $cardiologyCase = discussionCase($author, $hospital, $cardiology);
+    $neurologyCase = discussionCase($author, $hospital, $neurology);
 
     $this->actingAs($specialist)
-        ->get(route('clinical-cases.show', $case))
+        ->get(route('clinical-cases.show', $cardiologyCase))
+        ->assertForbidden();
+
+    $this->actingAs($specialist)
+        ->get(route('clinical-cases.show', $neurologyCase))
         ->assertOk()
-        ->assertSee($case->title);
+        ->assertSee($neurologyCase->title);
+
+    $this->actingAs($author)
+        ->get(route('clinical-cases.show', $cardiologyCase))
+        ->assertOk();
 });
 
 test('administrators can see aggregate counts but cannot open clinical discussions', function () {
@@ -73,12 +85,16 @@ test('administrators can see aggregate counts but cannot open clinical discussio
         ->assertForbidden();
 });
 
-test('publishing a case notifies every active clinician except its author', function () {
+test('publishing a case notifies only specialists with the matching specialty', function () {
     $hospital = Hospital::create(['name' => 'MediConnect Hospital']);
     $specialization = Specialization::create(['name' => 'Emergency Medicine']);
     $author = clinician('doctor', $hospital);
     $doctor = clinician('doctor', $hospital);
     $specialist = clinician('specialist', $hospital);
+    $specialist->specializations()->attach($specialization->id);
+    $otherSpecialty = Specialization::create(['name' => 'Dentistry']);
+    $unmatchedSpecialist = clinician('specialist', $hospital);
+    $unmatchedSpecialist->specializations()->attach($otherSpecialty->id);
     $inactiveDoctor = User::factory()->create([
         'role' => 'doctor',
         'hospital_id' => $hospital->id,
@@ -103,12 +119,39 @@ test('publishing a case notifies every active clinician except its author', func
     ]);
 
     $response->assertRedirect();
-    expect(Notification::where('user_id', $doctor->id)->where('type', 'new_case')->exists())->toBeTrue()
+    expect(Notification::where('user_id', $doctor->id)->where('type', 'new_case')->exists())->toBeFalse()
         ->and(Notification::where('user_id', $specialist->id)->where('type', 'new_case')->exists())->toBeTrue()
         ->and(Notification::where('user_id', $specialist->id)->value('title'))->toBe('New Emergency Medicine case for discussion')
         ->and(Notification::where('user_id', $author->id)->exists())->toBeFalse()
+        ->and(Notification::where('user_id', $unmatchedSpecialist->id)->exists())->toBeFalse()
         ->and(Notification::where('user_id', $inactiveDoctor->id)->exists())->toBeFalse()
         ->and(Notification::where('user_id', $admin->id)->exists())->toBeFalse();
+});
+
+test('doctors only browse their own cases but can open an eligible similar solved insight', function () {
+    $hospital = Hospital::create(['name' => 'MediConnect Hospital']);
+    $orthopedics = Specialization::create(['name' => 'Orthopedics']);
+    $doctor = clinician('doctor', $hospital);
+    $otherDoctor = clinician('doctor', $hospital);
+    $source = discussionCase($doctor, $hospital, $orthopedics);
+    $similar = discussionCase($otherDoctor, $hospital, $orthopedics);
+    $similar->update(['resolution_notes' => 'Immobilization followed by specialist review resolved the case.']);
+
+    $this->actingAs($doctor)
+        ->get(route('clinical-cases.index'))
+        ->assertOk()
+        ->assertSee($source->title)
+        ->assertDontSee(route('clinical-cases.show', $similar));
+
+    $this->actingAs($doctor)
+        ->get(route('clinical-cases.show', $similar))
+        ->assertForbidden();
+
+    $this->actingAs($doctor)
+        ->get(route('clinical-cases.similar', [$source, $similar]))
+        ->assertOk()
+        ->assertSee('% similar')
+        ->assertSee('Immobilization followed by specialist review');
 });
 
 test('case author is automatically and permanently following the discussion', function () {
