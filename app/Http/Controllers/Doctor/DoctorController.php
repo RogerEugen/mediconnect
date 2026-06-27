@@ -15,12 +15,13 @@ class DoctorController extends Controller
     {
         $user = Auth::user();
         $stats = [
-            'community_cases' => MedicalCase::whereIn('status', ['open', 'in_discussion'])->count(),
+            'community_cases' => MedicalCase::where('posted_by', $user->id)->whereIn('status', ['open', 'in_discussion'])->count(),
             'my_cases' => MedicalCase::where('posted_by', $user->id)->count(),
             'my_contributions' => Discussion::where('user_id', $user->id)->count(),
-            'unanswered' => MedicalCase::doesntHave('discussions')->count(),
+            'unanswered' => MedicalCase::where('posted_by', $user->id)->doesntHave('discussions')->count(),
         ];
         $recentCases = MedicalCase::with(['specialization', 'postedBy'])
+            ->where('posted_by', $user->id)
             ->withCount('discussions')
             ->latest('updated_at')
             ->take(6)

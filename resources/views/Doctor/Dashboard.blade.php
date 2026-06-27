@@ -4,7 +4,7 @@
             <div>
                 <p class="text-xs font-bold uppercase tracking-[0.2em] text-teal-600">Doctor workspace</p>
                 <h1 class="mt-1 text-2xl font-bold text-slate-900 dark:text-white">Welcome, Dr. {{ auth()->user()->name }}</h1>
-                <p class="mt-1 text-sm text-slate-500">Learn with colleagues and get perspectives on difficult clinical cases.</p>
+                <p class="mt-1 text-sm text-slate-500">Post difficult cases, receive specialist insight and review matched solutions.</p>
             </div>
             <a href="{{ route('clinical-cases.create') }}" class="rounded-xl bg-teal-600 px-5 py-3 text-center text-sm font-bold text-white shadow-lg shadow-teal-600/20 hover:bg-teal-700">+ Start discussion</a>
         </div>
@@ -14,7 +14,7 @@
         <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 @foreach([
-                    ['Community cases', $stats['community_cases'], 'bg-teal-50 text-teal-700'],
+                    ['My active cases', $stats['community_cases'], 'bg-teal-50 text-teal-700'],
                     ['My discussions', $stats['my_cases'], 'bg-blue-50 text-blue-700'],
                     ['My contributions', $stats['my_contributions'], 'bg-purple-50 text-purple-700'],
                     ['Awaiting insight', $stats['unanswered'], 'bg-amber-50 text-amber-700'],
@@ -27,8 +27,8 @@
             </div>
 
             @include('clinical-cases.partials.dashboard-list', [
-                'title' => 'Recently active discussions',
-                'emptyMessage' => 'No clinical discussions have been posted yet.',
+                'title' => 'My recently active cases',
+                'emptyMessage' => 'You have not posted a clinical case yet.',
             ])
         </div>
     </div>
