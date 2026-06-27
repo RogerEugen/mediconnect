@@ -24,6 +24,8 @@ class User extends Authenticatable
         'role',
         'hospital_id',
         'is_active',
+        'approved_at',
+        'approved_by',
     ];
 
     /**
@@ -46,18 +48,37 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'is_active' => 'boolean',
+            'approved_at' => 'datetime',
         ];
     }
-     // ── Helpers ──────────────────────────────────────────
-    public function isAdmin(): bool      { return $this->role === 'admin'; }
-    public function isDoctor(): bool     { return $this->role === 'doctor'; }
-    public function isSpecialist(): bool { return $this->role === 'specialist'; }
 
-     // ── Relationships ─────────────────────────────────────
+    // ── Helpers ──────────────────────────────────────────
+    public function isAdmin(): bool
+    {
+        return $this->role === 'admin';
+    }
+
+    public function isDoctor(): bool
+    {
+        return $this->role === 'doctor';
+    }
+
+    public function isSpecialist(): bool
+    {
+        return $this->role === 'specialist';
+    }
+
+    // ── Relationships ─────────────────────────────────────
 
     public function hospital()
     {
         return $this->belongsTo(Hospital::class);
+    }
+
+    public function approvedBy()
+    {
+        return $this->belongsTo(self::class, 'approved_by');
     }
 
     public function profile()

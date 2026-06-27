@@ -29,6 +29,12 @@
 
             {{-- Role shortcuts --}}
             <div class="mb-4 flex flex-wrap gap-2">
+                <a href="{{ route('admin.users.index', [...request()->except(['status', 'page']), 'status' => 'pending']) }}"
+                   class="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-bold transition
+                       {{ request('status') === 'pending' ? 'bg-amber-500 text-white shadow-sm' : 'border border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100' }}">
+                    <span class="h-2 w-2 rounded-full bg-current"></span>
+                    Pending verification ({{ $roleCounts['pending'] }})
+                </a>
                 <a href="{{ route('admin.users.index', request()->except(['role', 'page'])) }}"
                    class="px-4 py-2 text-sm font-medium rounded-lg transition
                        {{ !request('role') ? 'bg-gray-800 text-white' : 'bg-white border border-gray-300 text-gray-600 hover:bg-gray-50' }}">
@@ -70,7 +76,8 @@
                     <select name="status" class="rounded-lg border-gray-300 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-white">
                         <option value="">Any account status</option>
                         <option value="active" @selected(request('status') === 'active')>Active</option>
-                        <option value="inactive" @selected(request('status') === 'inactive')>Inactive</option>
+                        <option value="pending" @selected(request('status') === 'pending')>Pending verification</option>
+                        <option value="inactive" @selected(request('status') === 'inactive')>Inactive / no ID</option>
                     </select>
                 </div>
                 <div class="mt-3 flex flex-wrap items-center gap-3">
@@ -97,7 +104,7 @@
                     </thead>
                     <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
                         @forelse($users as $user)
-                        <tr class="hover:bg-gray-50 dark:hover:bg-gray-700 transition">
+                        <tr class="transition {{ !$user->is_active && $user->profile?->staff_card_path ? 'bg-amber-50/70 hover:bg-amber-50 dark:bg-amber-950/10' : 'hover:bg-gray-50 dark:hover:bg-gray-700' }}">
                             <td class="px-6 py-4 text-sm text-gray-500">{{ $loop->iteration }}</td>
                             <td class="px-6 py-4">
                                 <div class="flex items-center gap-3">
@@ -140,6 +147,10 @@
                             <td class="px-6 py-4">
                                 @if($user->is_active)
                                     <span class="px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Active</span>
+                                @elseif($user->profile?->staff_card_path)
+                                    <span class="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-2.5 py-1 text-xs font-bold text-amber-800">
+                                        <span class="h-1.5 w-1.5 rounded-full bg-amber-500"></span> Pending approval
+                                    </span>
                                 @else
                                     <span class="px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">Inactive</span>
                                 @endif
@@ -147,15 +158,26 @@
                             <td class="px-6 py-4">
                                 <div class="flex flex-wrap gap-1">
                                     <a href="{{ route('admin.users.show', $user) }}"
-                                       class="text-xs px-2.5 py-1 rounded border border-blue-300 text-blue-600 hover:bg-blue-50 transition">View</a>
+                                       class="text-xs px-2.5 py-1 rounded border border-blue-300 text-blue-600 hover:bg-blue-50 transition">
+                                        {{ !$user->is_active && $user->profile?->staff_card_path ? 'Review ID' : 'View' }}
+                                    </a>
                                     <a href="{{ route('admin.users.edit', $user) }}"
                                        class="text-xs px-2.5 py-1 rounded border border-gray-300 text-gray-600 hover:bg-gray-50 transition">Edit</a>
-                                    <form action="{{ route('admin.users.toggle', $user) }}" method="POST">
+                                    @if(!$user->is_active && $user->profile?->staff_card_path)
+                                    <form action="{{ route('admin.users.approve', $user) }}" method="POST" onsubmit="return confirm('Approve this clinician after reviewing the staff ID?')">
                                         @csrf @method('PATCH')
-                                        <button class="text-xs px-2.5 py-1 rounded border border-yellow-300 text-yellow-700 hover:bg-yellow-50 transition">
-                                            {{ $user->is_active ? 'Deactivate' : 'Activate' }}
+                                        <button class="rounded bg-emerald-600 px-2.5 py-1 text-xs font-bold text-white transition hover:bg-emerald-700">
+                                            Approve
                                         </button>
                                     </form>
+                                    @else
+                                        <form action="{{ route('admin.users.toggle', $user) }}" method="POST">
+                                            @csrf @method('PATCH')
+                                            <button class="text-xs px-2.5 py-1 rounded border border-yellow-300 text-yellow-700 hover:bg-yellow-50 transition">
+                                                {{ $user->is_active ? 'Deactivate' : 'Activate' }}
+                                            </button>
+                                        </form>
+                                    @endif
                                     <form action="{{ route('admin.users.reset-password', $user) }}" method="POST"
                                           onsubmit="return confirm('Reset password to Password@123?')">
                                         @csrf @method('PATCH')
@@ -164,10 +186,10 @@
                                         </button>
                                     </form>
                                     <form action="{{ route('admin.users.destroy', $user) }}" method="POST"
-                                          onsubmit="return confirm('Permanently delete this user?')">
+                                          onsubmit="return confirm('Deactivate this user and preserve their clinical history?')">
                                         @csrf @method('DELETE')
                                         <button class="text-xs px-2.5 py-1 rounded border border-red-300 text-red-600 hover:bg-red-50 transition">
-                                            Delete
+                                            Deactivate
                                         </button>
                                     </form>
                                 </div>

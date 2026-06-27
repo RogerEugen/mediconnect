@@ -11,6 +11,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 
@@ -18,7 +19,7 @@ class UserController extends Controller
 {
     public function index(Request $request)
     {
-        $query = User::with(['hospital', 'specializations'])
+        $query = User::with(['hospital', 'specializations', 'profile'])
             ->whereIn('role', ['doctor', 'specialist']);
 
         if ($request->filled('role')) {
@@ -39,8 +40,12 @@ class UserController extends Controller
         }
 
         if ($request->filled('status')) {
-            $request->validate(['status' => ['in:active,inactive']]);
-            $query->where('is_active', $request->string('status')->toString() === 'active');
+            $request->validate(['status' => ['in:active,pending,inactive']]);
+            match ($request->string('status')->toString()) {
+                'active' => $query->where('is_active', true),
+                'pending' => $query->where('is_active', false)->whereHas('profile', fn ($profile) => $profile->whereNotNull('staff_card_path')),
+                'inactive' => $query->where('is_active', false)->whereDoesntHave('profile', fn ($profile) => $profile->whereNotNull('staff_card_path')),
+            };
         }
 
         if ($request->filled('search')) {
@@ -58,6 +63,10 @@ class UserController extends Controller
             'all' => User::whereIn('role', ['doctor', 'specialist'])->count(),
             'doctor' => User::where('role', 'doctor')->count(),
             'specialist' => User::where('role', 'specialist')->count(),
+            'pending' => User::whereIn('role', ['doctor', 'specialist'])
+                ->where('is_active', false)
+                ->whereHas('profile', fn ($profile) => $profile->whereNotNull('staff_card_path'))
+                ->count(),
         ];
 
         return view('Admin.users.index', compact('users', 'specializations', 'hospitals', 'roleCounts'));
@@ -119,9 +128,48 @@ class UserController extends Controller
 
     public function show(User $user)
     {
-        $user->load(['hospital', 'specializations', 'hospitals', 'profile', 'photo']);
+        $user->load(['hospital', 'specializations', 'hospitals', 'profile', 'photo', 'approvedBy']);
 
         return view('Admin.users.show', compact('user'));
+    }
+
+    public function staffCard(User $user)
+    {
+        $user->loadMissing('profile');
+        abort_unless($user->profile?->staff_card_path, 404);
+        abort_unless(Storage::disk('local')->exists($user->profile->staff_card_path), 404);
+
+        $path = Storage::disk('local')->path($user->profile->staff_card_path);
+        $mime = Storage::disk('local')->mimeType($user->profile->staff_card_path) ?: 'application/octet-stream';
+
+        return response()->file($path, [
+            'Content-Type' => $mime,
+            'Content-Disposition' => 'inline; filename="'.str_replace('"', '', $user->profile->staff_card_original_name ?: 'staff-card').'"',
+            'X-Content-Type-Options' => 'nosniff',
+        ]);
+    }
+
+    public function approve(User $user)
+    {
+        abort_unless(in_array($user->role, ['doctor', 'specialist'], true), 404);
+
+        if ($user->is_active) {
+            return back()->with('success', 'This clinician account is already active.');
+        }
+
+        $user->loadMissing('profile');
+        if (! $user->profile?->staff_card_path || ! Storage::disk('local')->exists($user->profile->staff_card_path)) {
+            return back()->with('error', 'Approval failed: reviewable staff ID was not found.');
+        }
+
+        $user->update([
+            'is_active' => true,
+            'approved_at' => now(),
+            'approved_by' => Auth::id(),
+        ]);
+        $user->hospital?->update(['is_active' => true]);
+
+        return back()->with('success', "{$user->name}'s account has been approved and can now access MediConnect.");
     }
 
     public function edit(User $user)
@@ -187,10 +235,14 @@ class UserController extends Controller
             return back()->with('error', 'You cannot delete your own account.');
         }
 
-        $user->delete();
+        $user->update([
+            'is_active' => false,
+            'approved_at' => null,
+            'approved_by' => null,
+        ]);
 
         return redirect()->route('admin.users.index')
-            ->with('success', 'User deleted successfully.');
+            ->with('success', 'User access deactivated. The account was retained to preserve clinical and audit history.');
     }
 
     public function toggle(User $user)
@@ -200,6 +252,10 @@ class UserController extends Controller
         }
 
         $user->update(['is_active' => ! $user->is_active]);
+
+        if (! $user->is_active) {
+            $user->update(['approved_at' => null, 'approved_by' => null]);
+        }
 
         $status = $user->is_active ? 'activated' : 'deactivated';
 
