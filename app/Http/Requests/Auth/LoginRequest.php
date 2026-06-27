@@ -5,6 +5,7 @@ namespace App\Http\Requests\Auth;
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -40,6 +41,18 @@ class LoginRequest extends FormRequest
     public function authenticate(): void
     {
         $this->ensureIsNotRateLimited();
+
+        $inactiveUser = \App\Models\User::where('email', $this->string('email')->lower()->toString())
+            ->where('is_active', false)
+            ->first();
+
+        if ($inactiveUser && Hash::check($this->string('password')->toString(), $inactiveUser->password)) {
+            RateLimiter::hit($this->throttleKey());
+
+            throw ValidationException::withMessages([
+                'email' => 'Your account is awaiting administrator approval. You can sign in after your staff ID has been verified.',
+            ]);
+        }
 
         if (! Auth::attempt([
             ...$this->only('email', 'password'),
